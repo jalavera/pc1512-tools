@@ -51,6 +51,10 @@ jobs:
           TAGS: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release }}
         run: |
           for tag in $TAGS; do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "La Release $tag ja existeix: no es toca."
+              continue
+            fi
             prog=$(echo "${tag%%-*}" | tr a-z A-Z)
             ver=${tag#*-}
             [ -d "$prog" ] || { echo "no hi ha la carpeta $prog"; exit 1; }
