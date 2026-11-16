@@ -1,0 +1,397 @@
+LOADHI per a MS-DOS 3.x                                     versi¢ 0.18
+
+Quä Çs
+------
+LOADHI crea una zona de memïria superior (per exemple D0000-EFFFF) i hi
+carrega programes residents (KEYBX, MOUSE, ...), com fan DOS=UMB i LH
+a partir de DOS 5. La zona queda enllaáada a la cadena de blocs de
+memïria de DOS: cada programa hi tÇ el seu bloc i el seu entorn, i MEM
+el veu amb nom, adreáa i mida exactes.
+
+Funciona amb MS-DOS 3.x i 4.x (pensat per a 3.20 al PC1512). Amb DOS 5
+o posterior es nega a funcionar: allÖ ja hi ha DOS=UMB i LH. No
+funciona amb DR DOS ni DOS Plus.
+
+Contingut del disquet
+---------------------
+LOADHI.COM   el programa
+LOADHIT.COM  versi¢ de prova (vegeu mÇs avall)
+LOADHI.ASM   el codi font (nasm -f bin LOADHI.ASM -o LOADHI.COM)
+LOADHI.CFG   fitxer d'opcions per a la l°nia SHELL= (BE00-FBFF: el
+             PC1512 amb la DTC a BC00, vegeu mÇs avall)
+LOADHI.TXT   aquest fitxer
+MEM (0.4 o posterior; 0.9 per veure la DTC a BC000) Çs a part, al
+seu disquet.
+
+Instal˙laci¢
+------------
+1. Copia LOADHI.COM i MEM.COM a C:\ (o al directori de DOS).
+2. Copia LOADHI.CFG a C:\ (o on vulguis) i posa-hi les opcions, per
+   exemple (PC1512 de 86Box amb RAM de BE00 a FBFF i la DTC a BC00):
+     /H:BE00-FBFF /B:19 /FILES:12 /F /C
+     C:\COMMAND.COM C:\ /P
+   Si la DTC (o una altra ROM) Çs a C800, cal saltar-la amb dos trossos:
+     /H:C000-C7FF,CC00-FBFF /B:19 /FILES:12 /F /C
+   Al CONFIG.SYS, canvia (o afegeix) la l°nia SHELL:
+     SHELL=C:\LOADHI.COM @C:\LOADHI.CFG
+   MS-DOS 2.x - 4.x no admet mÇs de 31 carÖcters de parÖmetres a la l°nia
+   SHELL=: si en poses mÇs, diu "Comando irreconocible en CONFIG.SYS" i
+   LOADHI arrenca sense opcions. Per aixï les opcions van al fitxer.
+   Deixa BUFFERS i FILES al m°nim, que la resta va a dalt:
+     BUFFERS=1
+     FILES=8
+   Si ja tenies una l°nia SHELL amb altres opcions (p. ex. /E:512),
+   posa-les darrere de C:\COMMAND.COM igual que abans.
+3. A l'AUTOEXEC.BAT, posa LOADHI davant dels residents:
+     LOADHI KEYBX
+     LOADHI MOUSE
+   KEYBX ja no necessita /H:D000 (treu-l'hi: si no, xocaria amb la
+   zona alta).
+4. Reinicia i mira-ho amb MEM /C o MEM /D.
+
+Per quä al CONFIG.SYS
+---------------------
+La zona s'enllaáa a DOS posant un bloc de sistema a l'£ltim parÖgraf
+de la memïria convencional (B7FF0 amb 736 KB), que tapa el v°deo i les
+ROM fins a la zona alta. ês el mateix que fa DOS 5. Perï la part
+transitïria de COMMAND.COM viu just al capdamunt de la memïria i, quan
+es torna a carregar, ho fa sempre al mateix lloc: si COMMAND.COM ja
+estava carregat, trepitjaria aquest bloc i DOS es penjaria amb "Error
+de asignaci¢n de memoria". Per aixï LOADHI crea la zona com a SHELL=,
+abans que COMMAND.COM existeixi, i desprÇs el carrega ell mateix a la
+memïria convencional. LOADHI hi queda com a pare de COMMAND.COM amb
+menys d'1 KB (MEM el mostra com a LOADHI).
+Si proves de crear la zona des de l'AUTOEXEC.BAT o la l°nia d'ordres,
+LOADHI s'hi nega i t'explica la l°nia del CONFIG.SYS.
+
+Ès
+--
+LOADHI [@fitxer] [/H:inici[-final]] [/F] [/B:n] [/FILES:n] [/C]
+       [/R:n] [/RB:n] [/RC:n] [programa [parÖmetres]]
+
+@fitxer    Llegeix les opcions (i el programa amb els seus parÖmetres)
+           d'aquest fitxer de text, en lloc de la l°nia d'ordres. Hi
+           pots posar diverses l°nies i comentaris desprÇs de ';'.
+           MÖxim 2000 bytes, comentaris inclosos. Les opcions de LOADHI
+           van abans del nom del programa: el que hi ha desprÇs (tambÇ a
+           les l°nies segÅents) Çs per al programa.
+
+/H:inici   Crea la zona a partir d'aquest segment, entre BC00 i FDFF
+           (p. ex. /H:D000). TambÇ s'accepta l'adreáa (/H:D0000).
+           NomÇs tÇ efecte com a SHELL=. Si la zona ja existeix, no fa
+           res.
+-final     Èltim segment del tros, p. ex. /H:D000-DFFF. Sense final,
+           la zona arriba fins on hi ha RAM, fins a una ROM d'adaptador
+           o fins a la ROM del sistema, el primer que trobi.
+           Si a F0000 hi ha RAM (una targeta de memïria a 86Box), tambÇ
+           s'hi pot posar: /H:C000-C7FF,CC00-FBFF
+           Es poden posar fins a 4 trossos separats per comes, per
+           saltar ROM d'adaptador o altres forats:
+             /H:C000-C7FF,CC00-EFFF
+           LOADHI posa a l'£ltim parÖgraf de cada tros (menys l'£ltim)
+           un bloc de sistema que tapa el forat fins al tros segÅent,
+           com DOS 5. MEM mostra cada tros com una regi¢ (1, 2...).
+           Trossos seguits s'ajunten. Sense final, un tros arriba fins
+           on hi ha RAM, fins a una ROM d'adaptador o fins al tros
+           segÅent. Feu servir MEM /D per veure on hi ha RAM sense usar.
+/F         No comprova que la zona sigui buida (vegeu mÇs avall).
+/B:n       n buffers de disc mÇs (mÖxim 99), a la zona alta. S'afegeixen
+           als del BUFFERS= del CONFIG.SYS: amb BUFFERS=1 i /B:20 en
+           tens 21 i nomÇs 1 gasta memïria convencional.
+/FILES:n   n fitxers oberts mÇs, a la zona alta. S'afegeixen als del
+           FILES= (amb FILES=8 i /FILES:12 en tens 20). MÖxim 255 en
+           total.
+/C         Carrega l'intärpret (COMMAND.COM) a la zona alta: uns 4 KB
+           mÇs de memïria convencional. Vegeu "COMMAND.COM a dalt".
+           /B, /FILES i /C nomÇs funcionen a la l°nia SHELL= (com /H);
+           /B i /FILES, nomÇs amb MS-DOS 3.10 - 3.30.
+/R:n       Carrega el programa (i el seu entorn) al tros n de la zona
+           alta: 1 Çs el primer (el mÇs baix), com a LOADHI sense
+           programa i a MEM. Per exemple, amb la zona
+           C0000-C7FFF,CC000-FBFFF:
+             LOADHI /R:1 KEYBX    (al tros de 32 KB)
+             LOADHI /R:2 MOUSE    (al tros gran)
+           Si no hi cap, es carrega a la memïria convencional i diu
+           "No hi cap al tros n". Si la zona no tÇ tants trossos, ho
+           diu i no carrega res. A la l°nia SHELL= no fa res (per
+           a l'intärpret hi ha /RC).
+/RB:n      Posa els BUFFERS i els FILES de /B i /FILES al tros n.
+           Sense /RB van al primer tros on hi caben (normalment el 1).
+           Si no hi caben, ho diu i van a un altre tros.
+/RC:n      Posa COMMAND.COM (/C) al capdamunt del bloc lliure mÇs gran
+           del tros n. Sense /RC va al bloc lliure mÇs gran de tota la
+           zona (normalment el tros gran). Si no hi cap, ho diu i va al
+           bloc mÇs gran, com sense /RC.
+           /RB i /RC nomÇs a la l°nia SHELL= (al LOADHI.CFG). Si la
+           zona no tÇ aquest tros, ho diu i fan com si no hi fossin.
+           Per exemple, amb la zona C0000-C7FFF,CC000-FBFFF:
+             /RB:1 /RC:2   (el que fa sense opcions)
+             /RB:2 /RC:1   buffers i fitxers al tros gran, COMMAND.COM
+                           al petit (si hi cap, uns 25 KB amb el 3.20)
+programa   .COM o .EXE, amb o sense extensi¢; si no porta unitat ni
+           directori, tambÇ el busca pel PATH. Els .BAT no.
+           Si no hi cap a la zona alta, es carrega a la memïria
+           convencional i ho avisa.
+
+Sense programa, mostra la zona i quanta memïria lliure hi queda. Si
+la zona tÇ mÇs d'un tros, els numera i en dona el lliure de cadascun:
+  Zona alta: 1) C0000-C7FFF, 2) CC000-FBFFF (229.376 bytes).
+  Lliure: 229.328 bytes; bloc lliure mÇs gran: 196.592 bytes.
+    Tros 1: lliure 32.736 bytes; bloc lliure mÇs gran: 32.736 bytes.
+    Tros 2: lliure 196.592 bytes; bloc lliure mÇs gran: 196.592 bytes.
+
+LOADHI torna l'ERRORLEVEL del programa (o 1 si hi ha hagut un error).
+
+COMMAND.COM a dalt (/C)
+-----------------------
+LOADHI carrega COMMAND.COM sense executar-lo (EXEC 4B01h) al capdamunt
+del bloc lliure mÇs gran de la zona alta (o del tros de /RC). Mentre el
+carrega, tapa la resta de memïria lliure, i aix° COMMAND.COM i el seu
+entorn queden junts en aquest lloc. DesprÇs torna a deixar lliure la
+resta de memïria i li passa el control. COMMAND hi posa el seu resident i, just a sobre, la seva
+part transitïria (la que es torna a carregar del disc). Perquä els
+programes que carreguis desprÇs amb LOADHI no la trepitgin, LOADHI no
+fa servir mai el bloc lliure que hi ha just desprÇs de COMMAND.COM:
+els residents van a la part baixa de la zona. Si la zona s'omple,
+LOADHI carrega els programes a baix i ho diu.
+Si COMMAND.COM no hi cap o no es pot carregar, es carrega a baix com
+sempre i ho diu:
+  LOADHI /C: no cap a dalt (pas N, codi XXXXh); es carrega a baix.
+  pas 1/2: no s'ha pogut reservar la memïria (codi = error de DOS)
+  pas 3: no hi ha cap bloc lliure a la zona alta
+  pas 4: el bloc lliure mÇs gran de la zona alta Çs massa petit (codi
+         = parÖgrafs que hi ha)
+  pas 5: no s'ha pogut reduir el bloc (codi = error de DOS)
+  pas 6: DOS no l'ha pogut carregar (codi = error de DOS)
+  pas 7: no es troba el programa carregat a la cadena de blocs
+  pas 8: COMMAND.COM s'ha carregat a dalt perï ha acabat (codi =
+         ERRORLEVEL); llavors es torna a carregar a baix, perquä la
+         mÖquina arrenqui igualment
+Si veus algun d'aquests missatges, apunta el pas i el codi.
+
+/V (per provar /C): mostra on s'ha carregat COMMAND.COM i on comenáarÖ,
+  LOADHI /V: carregat a PSP=E9B3, CS:IP=E9B3:0100, SS:SP=E9B3:64CE
+i, si desprÇs un programa acaba (INT 20h o INT 21h 00h/4Ch/31h), quin:
+  LOADHI /V: el programa PSP=xxxx acaba (AX=xxxx)
+A mÇs, amb la BIOS (es veu encara que DOS falli), escriu una lletra a
+cada pas de la cÖrrega de COMMAND.COM a dalt:
+  a  comenáa           b  memïria prïpia reduãda
+  c  memïria convencional reservada   d  zona alta reservada
+  e  espai per a COMMAND.COM fet      f  DOS l'ha carregat (4B01h)
+  g  memïria temporal alliberada      h  trobat el seu PSP
+  i  a punt                           j  salta a COMMAND.COM
+  L  el carrega a baix                X  l'EXEC ha fallat (+ codi)
+L'£ltima lletra que surt diu on es para.
+
+LOADHIT.COM (versi¢ de prova)
+-----------------------------
+ês el mateix LOADHI perï escriu SEMPRE les lletres, tambÇ abans de
+comenáar la cÖrrega, i no depän de /V:
+  <  comenáa      C0/C1  /C llegit?       V0/V1  /V llegit?
+  1  zona creada  2  BUFFERS i FILES fets  3  COMMAND.COM trobat
+  o/O  abans/desprÇs d'obrir un fitxer per buscar el programa
+  4  mida calculada (+ 0/1: anirÖ a dalt?)  5  salta al stub
+  desprÇs  a ... j, L, X  com a /V.
+Per provar-lo: SHELL=C:\UTILS\LOADHIT.COM @C:\UTILS\LOADHI.CFG
+Deixa-ho nomÇs per provar: fins que reinicies queda vigilant la
+INT 21h. MEM el mostra a "Memoria superior".
+
+BUFFERS i FILES a dalt (/B i /FILES)
+------------------------------------
+LOADHI reserva un bloc de DOS a la zona alta (MEM el mostra com a
+"MSDOS Datos de sistema") i hi encadena els buffers o la taula de
+fitxers al final de les de DOS, que les fa servir com les seves.
+La memïria que reserva el CONFIG.SYS en arrencar no es pot tornar a
+alliberar: per aixï cal deixar BUFFERS i FILES al m°nim i posar la
+resta amb /B i /FILES.
+
+Com carrega un programa
+-----------------------
+Mentre dura l'EXEC, LOADHI posa a nom seu tots els blocs lliures de la
+memïria convencional. DOS nomÇs troba lloc a dalt i hi posa l'entorn i
+el programa. En acabar, els blocs convencionals tornen a ser lliures.
+LOADHI tambÇ escriu el nom del programa a la capáalera del seu bloc
+(com fa DOS 4), perquä MEM el reconegui encara que el programa alliberi
+l'entorn (KEYBX ho fa).
+On va cada programa (sense /R): DOS posa l'entorn al primer forat on
+hi cap (sovint el tros 1) i el programa, com fa sempre amb els .COM i
+amb la majoria d'.EXE, al bloc lliure mÇs gran de la zona (sovint el
+tros 2). Per aixï, sense /R, un programa i el seu entorn poden quedar
+en trossos diferents, i el tros petit nomÇs s'omple d'entorns. Amb
+/R:n, LOADHI tapa tambÇ els forats dels altres trossos mentre dura
+l'EXEC, i DOS nomÇs troba lloc al tros n.
+Per saber on ha anat: MEM /M:nom (segment i mida) o MEM /D.
+Mentre el programa s'inicia nomÇs tÇ la memïria de la zona alta: si en
+demana mÇs del que hi ha, li pot fallar. Si passa, carrega'l normal.
+KEYBX 1.9 o posterior diu "Instal˙lat a memïria superior"; les versions
+anteriors deien "memïria convencional" encara que fossin a dalt.
+
+Reinicis en calent i /F
+-----------------------
+En un reinici en calent (Ctrl+Alt+Supr) la BIOS nomÇs esborra la
+memïria convencional: a dalt hi queden les restes de la sessi¢
+anterior. Per aixï abans KEYBX /H de vegades deia que la zona era plena
+i de vegades no: desprÇs d'engegar la mÖquina (en fred) era buida, i
+desprÇs de Ctrl+Alt+Supr hi havia el KEYBX vell.
+LOADHI reconeix les restes d'una zona seva (una cadena de blocs que
+acaba bÇ) i la torna a crear sense queixar-se. Si a dalt hi ha altres
+coses (p. ex. un KEYBX que havies carregat amb /H, o RAM amb brossa en
+una mÖquina real), diu que la zona no Çs buida: si saps que ja no ho
+fa servir ning£, posa /F a la l°nia SHELL nomÇs aquella vegada (o
+deixa-l'hi, si n'estÖs segur).
+Abans de crear la zona, LOADHI comprova byte a byte (sense esborrar
+res) que tot sigui RAM.
+
+MEM 0.4 (vegeu MEM.TXT)
+-----------------------
+- Noms dels programes carregats amb LOADHI, encara que alliberin
+  l'entorn: primer el de la capáalera del bloc, i si no n'hi ha, el de
+  l'entorn alliberat just abans del programa.
+- LOADHI com a SHELL= surt amb el seu nom en lloc de COMMAND.
+- La zona alta surt a "Memoria superior" (MEM /C), amb cada bloc a
+  MEM /D, i MEM /M:KEYBX en d¢na el segment i la mida.
+- El bloc de sistema que tapa el v°deo surt com a "MSDOS Datos de
+  sistema" al final de la memïria convencional.
+- Continua detectant el codi resident sense bloc (KEYBX /H), com la 0.3.
+
+Proves
+------
+0.2: /B:20 i /FILES:12 encadenats al final de les llistes de DOS
+(comprovat recorrent-les), COMMAND de prova carregat al capdamunt de
+la zona, zona petita (32 KB) omplerta fins al final: els residents
+no trepitgen mai la part transitïria i, quan no hi caben, van a baix.
+0.1:
+Provat en un simulador 8086 amb un MS-DOS 3.20 de prova (736 KB) i un
+intärpret de prova en lloc de COMMAND.COM:
+- crear la zona com a SHELL=, carregar KEYBX 1.8 i un resident de
+  prova, i MEM /C, /D i /M;
+- reinici en calent amb la zona vella a dalt;
+- restes d'un KEYBX /H a D000: sense /F es nega, amb /F funciona;
+- memïria plena de brossa;
+- programa que no hi cap (es carrega a baix), programa que no existeix,
+  /H fora de C000-FDFF, intent de crear la zona des de l'AUTOEXEC.
+NO s'ha provat amb el DOS 3.20 ni el COMMAND.COM de debï ni a 86Box
+(els buffers i la taula de fitxers de DOS segueixen el format
+documentat de DOS 3.1 - 3.3, perï no s'han provat amb el DOS real).
+Prova primer nomÇs amb /H, desprÇs hi afegeixes /B i /FILES, i al final
+/C. Fes-ne
+cïpia del CONFIG.SYS abans de provar-ho i tingues a mÖ un disquet
+d'arrencada. Si no arrenca, arrenca amb el disquet i torna a posar la
+l°nia SHELL d'abans.
+
+Consells
+--------
+- Posa els residents petits al tros petit amb /R:1, i deixa el tros
+  gran per als grans.
+- MEM /D mostra on ha anat cada bloc; MEM /M:nom, un programa concret.
+- Si un programa no vol anar a dalt, LOADHI el carrega a baix i ho diu.
+- DOS Plus: LOADHI no hi funciona. Si DOS Plus llegeix el mateix
+  CONFIG.SYS que MS-DOS 3.20, aquesta l°nia SHELL li faria fallar
+  l'arrencada: comprova-ho abans.
+
+PC1512 amb 248 KB seguits (DTC a BC00)
+--------------------------------------
+Amb la build de 86Box del fork (branca pc1512-vram-nomirror), la BIOS
+del PC1512 retocada (40043) i la ROM de la DTC retocada
+(dtc_cxd21a.bin), la ROM de la DTC va a BC000, al lloc del mirall de la
+memïria de v°deo, i la memïria superior queda d'una sola peáa:
+    B8000-BBFFF  v°deo (16 KB)
+    BC000-BDFFF  ROM de la DTC (8 KB)
+    BE000-FBFFF  RAM, 248 KB seguits
+    FC000-FFFFF  ROM del PC1512
+Configuraci¢ de 86Box: a la mÖquina, desmarca "Mirall de la memïria de
+v°deo a BC000-BFFFF"; a la DTC 5150X, adreáa BC00H; targetes de memïria:
+  1a: inici 640 KB, 96 KB  (convencional fins a 736 KB)
+  2a: inici 752 KB, 256 KB, "Permet RAM fins a la ROM del sistema"
+La 2a targeta comenáa a BC000 (la targeta va de 16 en 16 KB i BE000
+no hi cau), perï la ROM de la DTC tapa la RAM de BC000-BDFFF: la RAM
+que queda va de BE000 a FBFFF. A LOADHI.CFG: /H:BE00-FBFF (o /H:BE00:
+sense final, LOADHI s'atura sol a la ROM del sistema).
+Si la 2a targeta comenáa a 768 KB (240 KB), la RAM va de C0000 a FBFFF
+i cal posar /H:C000-FBFF.
+LOADHI no deixa crear la zona a BC00-BFFF si hi ha el mirall del v°deo
+(ho diu i carrega l'intärpret d'ordres a baix).
+
+Historial
+---------
+LOADHI 0.18 15-11-2026  La memïria superior comenáa a BC00 (abans C000):
+                        amb el v°deo sense mirall i la DTC a BC00, la zona
+                        pot comenáar a BE00 i arribar a 248 KB seguits.
+                        Si /H comenáa entre BC00 i BFFF, comprova que no
+                        sigui el mirall del v°deo. LOADHI.CFG: zona
+                        BE00-FBFF. NomÇs compilat i revisat; NO provat al
+                        DOS 3.20 real.
+LOADHI 0.17 14-11-2026  /RB:n i /RC:n: el tros dels BUFFERS i FILES i el
+                        de COMMAND.COM (a la l°nia SHELL=). L'entorn de
+                        COMMAND.COM va ara amb COMMAND.COM (abans podia
+                        anar a un altre tros). Error de la 0.16: /R a la
+                        l°nia SHELL= tapava tota la zona i els BUFFERS
+                        no hi cabien; ara /R no hi fa res.
+                        Provat al simulador 8086 (zona C000-C7FF i
+                        CC00-FBFF, /B:19 /FILES:12 /C amb totes les
+                        combinacions); NO provat encara al DOS 3.20 real.
+LOADHI 0.16 14-11-2026  /R:n: carrega el programa al tros n de la zona.
+                        Sense programa, numera els trossos i diu el
+                        lliure de cadascun. Amb la build de 86Box del
+                        fork (casella "Allow RAM up to the system ROM"),
+                        F0000-FBFFF ja tÇ RAM al PC1512.
+                        Provat en un simulador 8086 amb blocs de memïria
+                        de DOS 3.20 (zona C000-C7FF i CC00-FBFF); NO
+                        provat encara al DOS 3.20 real.
+LOADHI 0.15 13-11-2026  Com a SHELL=, si hi ha un error (p. ex. "No hi ha
+                        RAM a F0000"), ho diu i carrega igualment
+                        l'intärpret d'ordres a baix: el PC arrenca.
+                        A 86Box (Amstrad PC1512), F0000-FBFFF no es pot fer
+                        servir: una targeta de memïria no hi posa RAM.
+LOADHI 0.14 13-11-2026  La zona alta pot arribar mÇs enllÖ de EFFF si hi ha
+                        RAM (p. ex. /H:C000-C7FF,CC00-FBFF amb una targeta
+                        de memïria fins a FBFFF). Para sola a la ROM.
+LOADHI 0.13 13-11-2026  La 0.12 tornava a posar nom tambÇ als programes
+                        carregats abans per un altre LOADHI (tots tenen el
+                        mateix pare), i KEYBX sortia amb el nom d'un altre.
+                        Ara nomÇs posa nom al programa que acaba de
+                        carregar.
+LOADHI 0.12 13-11-2026  El nom del programa no s'escrivia si el bloc de
+                        memïria tenia restes d'abans (p. ex. desprÇs de
+                        reiniciar des de DOS Plus): MEM deia ?CD5D en lloc
+                        de KEYBX. Ara s'escriu sempre.
+LOADHI 0.11 13-11-2026  Com a SHELL=, si no troba el nom de l'intärpret
+                        d'ordres ho diu (abans sortia sense dir res).
+                        /C, /B i /FILES junts provats al DOS 3.20 real.
+LOADHI 0.10 13-11-2026  El fitxer @ es llegia nomÇs fins a 250 bytes: amb
+                        comentaris, el nom del programa quedava tallat
+                        ("No es troba el programa C"). Ara 2000 bytes, i
+                        si en passa ho diu.
+LOADHI 0.9  13-11-2026  Si DOS dona un error cr°tic de disc mentre LOADHI
+                        treballa, ho diu ("LOADHI: error cr°tic AX=...
+                        DI=..."). LOADHIT: lletres o/O.
+LOADHI 0.8  13-11-2026  Lletres L i X a /V. LOADHIT.COM: versi¢ de prova
+                        que escriu les lletres sempre.
+LOADHI 0.7  13-11-2026  /V tambÇ escriu una lletra a cada pas (amb la BIOS).
+LOADHI 0.6  13-11-2026  /V per veure quä passa amb /C al DOS 3.20 real
+                        (amb el COMMAND.COM 3.20 real, al simulador /C
+                        funciona).
+LOADHI 0.5  13-11-2026  /C: amb el DOS 3.20 real, COMMAND.COM carregat a
+                        dalt no arrencava ("interpretador de comandos
+                        incorrecto"). Ara, si DOS no dona els registres
+                        d'inici del programa, LOADHI els posa com un
+                        EXEC normal (i tambÇ el DTA), i si COMMAND.COM
+                        acaba, el torna a carregar a baix en lloc de
+                        deixar la mÖquina sense intärpret.
+LOADHI 0.4  13-11-2026  /H amb diversos trossos (p. ex. C000-C7FF i
+                        CC00-EFFF, saltant la ROM de C800). /C diu per
+                        quä no ha pogut carregar COMMAND.COM a dalt, i
+                        ja no falla si LOADHI no tÇ entorn.
+LOADHI 0.3  13-11-2026  @fitxer: opcions en un fitxer, perquä la l°nia
+                        SHELL= de DOS 3.20 no admet mÇs de 31 carÖcters
+                        de parÖmetres.
+LOADHI 0.2  13-11-2026  /B:n i /FILES:n (buffers i fitxers a dalt), /C
+                        (COMMAND.COM a dalt, amb la part transitïria
+                        protegida), opcions amb paraules.
+LOADHI 0.1  13-11-2026  Primera versi¢: zona alta enllaáada a DOS creada
+                        com a SHELL=, cÖrrega a dalt, cerca pel PATH,
+                        nom a la capáalera del bloc, restes d'una zona
+                        d'abans, /F, estat.
+MEM 0.4     13-11-2026  Noms dels programes carregats amb LOADHI (vegeu
+                        a dalt).
+MEM 0.3     13-11-2026  Codi resident sense bloc: adreáa, mida i nom.

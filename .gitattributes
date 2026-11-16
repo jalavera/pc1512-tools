@@ -1,0 +1,5 @@
+# Fonts i textos per a DOS: CP850 i CRLF, tal com són (no es converteixen)
+*.ASM -text
+*.TXT -text
+*.CFG -text
+*.INC -text

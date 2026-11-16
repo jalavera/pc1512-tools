@@ -1,0 +1,172 @@
+MEM per a MS-DOS 3.20                                       versi¢ 0.12
+=====================                                       15-11-2026
+
+QuŠ ‚s
+------
+Un MEM nou, escrit de zero per a MS-DOS 3.20 (Amstrad PC1512), que fa
+el mateix que el MEM de MS-DOS 6.22 i amb els mateixos textos en
+castell…. El MEM 6.22 no serveix a DOS 3.20: nom‚s accepta DOS 6.22 i
+llegeix estructures que DOS 3.x no t‚ (noms als blocs de mem•ria,
+subblocs de sistema, enlla‡ de mem•ria superior de DOS 5).
+
+A m‚s, mira quŠ hi ha entre el final de la mem•ria convencional
+(736 KB = B8000h al teu PC1512) i 1 MB: v¡deo, ROM, blocs de mem•ria
+superior, codi resident i controladors carregats a dalt.
+
+Contingut del disquet
+---------------------
+  MEM.COM      el programa (12.052 bytes)
+  MEM.ASM      el codi font (NASM, CP850)
+  MEM.TXT      aquest fitxer
+
+Instalúlaci¢
+------------
+Copia MEM.COM a un directori del PATH, per exemple:
+    COPY A:MEM.COM C:\DOS
+Si en aquell directori hi ha un MEM.EXE vell, esborra'l o canvia-li el
+nom; de tota manera DOS executa abans el .COM que el .EXE.
+
+és
+--
+  MEM               resum (convencional, superior, reservada, EMS)
+  MEM /C            m•duls i mem•ria que fa servir cadascun
+  MEM /D            detall: …rees del sistema, controladors, cada bloc,
+                    blocs de mem•ria superior, BUFFERS/FILES/FCBS, mapa
+                    de B8000h a FFFFFh
+  MEM /F            blocs lliures
+  MEM /M:KEYBX      blocs d'un programa (tamb‚ MEM /M KEYBX)
+  MEM /P            atura cada pantalla (es pot combinar: MEM /D /P)
+  MEM /?            ajuda
+Les formes llargues (/CLASSIFY, /DEBUG, /FREE, /MODULE, /PAGE) tamb‚
+funcionen. La sortida es pot redirigir: MEM /D > MEM.TXT
+
+Com troba el que hi ha per sobre de 736 KB
+------------------------------------------
+- ROM d'adaptador: signatura 55AAh cada 2 KB de C0000h a EFFFFh. Es
+  compta tota la finestra de 16 KB perquŠ molts controladors (p. ex.
+  SCSI) hi tenen registres que no s'han de llegir.
+- Blocs de mem•ria superior: si la cadena de blocs de DOS continua per
+  sobre de la convencional, o si hi ha una cadena de blocs (M/Z) que
+  comen‡a i acaba en un l¡mit d'1 KB entre C0000h i EFFFFh. Surten a
+  "Memoria superior" i a la columna "Memoria superior" de /C.
+- Codi resident sense bloc: vectors d'interrupci¢ que apunten a
+  mem•ria superior fora de v¡deo, ROM i blocs. Es mostren:
+  - on ‚s, amb l'adre‡a d'inici i de final (p. ex. D0000-D0C6F) i la
+    mida. MEM parteix dels gestors d'interrupci¢ i s'est‚n cap enrere i
+    cap endavant fins que troba 1 KB buit (tot 00h o tot FFh). Si a
+    segment:0100h hi ha un salt (un .COM copiat a dalt, com KEYBX /H),
+    el resident comen‡a all…;
+  - el nom: si al segment hi ha un PSP o un bloc de mem•ria, se'l treu
+    de l'entorn; si ‚s un controlador, el nom del controlador; si no,
+    la signatura que hi ha just despr‚s del salt inicial (KEYBX1 ->
+    KEYBX);
+  - les interrupcions que intercepta.
+  Al mapa de /D el resident surt amb el nom i els l¡mits exactes, en
+  lloc de trossos de 2 KB.
+  ATENCIà: el final ‚s fins a l'£ltim byte no buit. Si el programa
+  acaba amb buffers a zero, ocupa una mica m‚s i MEM no ho pot saber
+  (no hi ha cap bloc de mem•ria que ho digui). KEYBX 1.8, per exemple,
+  acaba amb uns 2 KB de buffers a zero (la taula emergent): MEM en
+  mostra uns 3.184 bytes i en realitat n'ocupa 5.477 (D0000-D156F).
+- La resta es classifica pel contingut. Si ‚s tot 00h o tot FFh, MEM
+  comprova si hi ha RAM: escriu i rellegeix el primer i l'£ltim byte
+  de cada tros de 2 KB, amb les interrupcions aturades, i hi torna a
+  deixar el que hi havia. Surt:
+    "RAM sin usar (fuera de DOS, a cero)" o "... llena de FFh)": RAM
+       que DOS no fa servir; es pot afegir a la zona alta de LOADHI;
+    "Sin memoria (lee 00h)" o "Sin memoria (lee FFh)": no hi ha res;
+    "Ocupada (contenido desconocido)": hi ha dades.
+MEM no escriu mai a la mem•ria per comprovar si hi ha RAM.
+
+Noms de programa
+----------------
+DOS 3.x no desa el nom del programa al bloc de mem•ria. MEM el treu de
+l'entorn del programa (la ruta que hi ha despr‚s de les variables).
+Casos especials:
+- COMMAND: l'intŠrpret principal (el seu pare ‚s ell mateix).
+- Si un resident ha alliberat l'entorn per• les dades encara hi s¢n,
+  tamb‚ es fan servir.
+- Si no hi ha manera de saber-ho, surt "?" i el segment del PSP
+  (p. ex. ?0A3C). Amb MEM /M:?0A3C se'n veuen els blocs.
+
+DiferŠncies amb MEM 6.22
+------------------------
+- No mostra XMS ni l'…rea de mem•ria alta (el PC1512 ‚s un 8086).
+- Els blocs del mateix MEM es compten com a lliures, igual que 6.22.
+- "Reservada" ‚s el que queda fins a 1 MB despr‚s de la convencional i
+  la superior.
+- /D afegeix el mapa de B8000h-FFFFFh i la llista de codi resident.
+- Mides dels controladors de CONFIG.SYS: no es mostren (DOS 3.x no
+  les desa enlloc).
+
+Recomanacions
+-------------
+- Funciona amb MS-DOS 3.1 o posterior. No l'executis amb DOS Plus 1.2:
+  les seves estructures internes s¢n diferents. Si detecta la cadena
+  de blocs trencada, s'atura amb un missatge.
+- No s'ha provat en un PC1512 real ni a 86Box, nom‚s en un simulador
+  8086 amb una mem•ria de DOS 3.20 de prova. Si alguna cosa no quadra,
+  envia'm la sortida de MEM /D > MEM.TXT.
+
+Historial
+---------
+0.12 15-11-2026  MEM /D: secci¢ nova "Buffers, archivos y FCB" (nom‚s
+                 MS-DOS 3.1 a 3.3). Resegueix les cadenes del DOS (llista
+                 de llistes, INT 21h AH=52h) i diu, per a cada tros, les
+                 adreces, la mida, quants n'hi ha i on ‚s:
+                   DOS (interno)      dins el mateix DOS (p. ex. les 5
+                                      primeres entrades de FILES)
+                   DOS (CONFIG.SYS)   el bloc que el DOS fa a la mem•ria
+                                      convencional per a BUFFERS=, FILES=
+                                      i FCBS=
+                   Memoria superior   els que hi posa LOADHI (/B, /FILES)
+                 Els buffers es recullen, s'ordenen per adre‡a (DOS els
+                 encadena per ordre d'£s) i els que s¢n seguits a la
+                 mem•ria surten en una sola l¡nia (fins a 128). Al final, el total de BUFFERS, FILES i FCBS (i
+                 quants FCB s¢n protegits).
+0.11 15-11-2026  MEM /D, /F i /M: la columna "Segmento" ara ‚s
+                 "Direcci¢n" i diu l'adre‡a inicial i la final del bloc
+                 (p. ex. 0A810-B7FEF), en hexadecimal, en lloc de nom‚s
+                 el segment. A /F ‚s la mem•ria lliure, sense la
+                 cap‡alera del bloc.
+0.10 15-11-2026  COMMAND.COM a dalt (LOADHI /C): la seva part transit•ria
+                 (la que es torna a carregar del disc), el bloc lliure
+                 just a sobre del resident fins al final de la zona, ja
+                 no surt com a "-- Libre --"
+                 sin¢ com a COMMAND, "Parte transitoria", i no es compta
+                 com a lliure (DOS 3.x no la reserva amb cap bloc, per•
+                 LOADHI no hi posa mai res). Aix¡ el lliure que surt ‚s
+                 el que de deb• es pot fer servir.
+0.9  15-11-2026  V¡deo sense mirall: si a BC000 hi ha una ROM d'adaptador
+                 de deb• (55AAh, suma correcta i no ‚s el mirall de
+                 B8000), la mem•ria de v¡deo acaba a BBFFF i el mapa de
+                 MEM /D mostra la ROM a BC000 (p. ex. la DTC 5150X a
+                 BC00H) i el que hi ha despr‚s. Les ROM per sota de
+                 C000 surten amb la seva mida justa (sense la finestra
+                 de 16 KB de les targetes SCSI).
+0.8  13-11-2026  Si hi ha RAM a partir de F0000 (p. ex. una targeta de
+                 mem•ria fins a FBFFF), la mem•ria superior arriba fins
+                 on acaba aquesta RAM, i no fins a EFFFF.
+0.7  13-11-2026  Les l¡nies del bloc m‚s extens (convencional i
+                 superior) diuen tamb‚ les adreces, p. ex.
+                 "... 694K (710.880 bytes)  0A790-B7FEF".
+0.6  13-11-2026  Zona alta de LOADHI amb diversos trossos: els blocs de
+                 sistema que tapen les ROM no es compten com a mem•ria
+                 superior i cada tros ‚s una regi¢ (1, 2...).
+0.5  13-11-2026  MEM /D distingeix la RAM sense usar (fora de DOS) de
+                 les zones sense mem•ria.
+0.4  13-11-2026  Programes carregats amb LOADHI: nom de la cap‡alera del
+                 bloc o de l'entorn alliberat just abans del programa;
+                 LOADHI com a SHELL= surt amb el seu nom.
+0.3  13-11-2026  Codi resident sense bloc (p. ex. KEYBX /H:D000): ara
+                 en mostra l'adre‡a d'inici i de final i la mida, el
+                 nom per la signatura (KEYBX) i, al mapa de /D, els
+                 l¡mits exactes amb el nom en lloc de trossos de 2 KB.
+                 /M:KEYBX tamb‚ en mostra on ‚s i la mida.
+0.2  12-11-2026  Corregit: es penjava en comen‡ar. DOS no posa a zero
+                 la mem•ria que hi ha despr‚s d'un .COM i un comptador
+                 intern comen‡ava amb brossa; ara totes les variables
+                 sense valor inicial es posen a zero en arrencar.
+                 Provat al simulador omplint la mem•ria de brossa.
+0.1  12-11-2026  Primera versi¢: resum, /C, /D, /F, /M, /P, /?;
+                 mapa de la mem•ria per sobre de la convencional.
