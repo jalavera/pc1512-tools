@@ -20,8 +20,9 @@ nasm -f bin -DTRACE LOADHI/LOADHI.ASM -o LOADHIT.COM   (versió de prova)
 nasm -f bin MEM/MEM.ASM -o MEM.COM
 ```
 
-Cada push assembla tots els programes (GitHub Actions). Una etiqueta
-`programa-versió` (p. ex. `loadhi-0.18`) en fa una Release.
+Cada push assembla tots els programes (GitHub Actions). Per publicar
+una versió: *Actions > Build > Run workflow*, amb el nom
+`programa-versió` (p. ex. `loadhi-0.18`) a *release*.
 
 ## Codificació
 

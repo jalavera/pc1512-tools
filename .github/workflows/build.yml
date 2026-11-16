@@ -1,8 +1,10 @@
 name: Build
 
-# Assembla tots els programes (NASM). En un push d'una etiqueta (p. ex.
-# loadhi-0.18 o mem-0.12) en fa una Release amb el .COM, el .TXT i el
-# codi font del programa.
+# Assembla tots els programes (NASM). Per fer una Release: Actions >
+# Build > Run workflow, i a "release" el nom programa-versió (p. ex.
+# loadhi-0.18; se'n poden posar uns quants separats per espais). També
+# en fa una si es puja una etiqueta amb aquest nom. La Release porta el
+# .COM, el .TXT (i el .CFG) i el codi font del programa.
 
 on:
   push:
@@ -10,6 +12,11 @@ on:
     tags: [ '*-*' ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Releases a fer (p. ex. "loadhi-0.18 mem-0.12")'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -38,14 +45,16 @@ jobs:
           name: pc1512-tools
           path: out/
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.release != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          TAGS: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release }}
         run: |
-          tag=${GITHUB_REF_NAME}
-          prog=$(echo "${tag%%-*}" | tr a-z A-Z)
-          ver=${tag#*-}
-          [ -d "$prog" ] || { echo "no hi ha la carpeta $prog"; exit 1; }
-          files=$(ls out/$prog*.COM out/$prog.TXT out/$prog.CFG 2>/dev/null; ls $prog/*.ASM)
-          gh release create "$tag" --title "$prog $ver" \
-            --notes "$prog $ver per a MS-DOS 3.x (Amstrad PC1512). Vegeu $prog.TXT." $files
+          for tag in $TAGS; do
+            prog=$(echo "${tag%%-*}" | tr a-z A-Z)
+            ver=${tag#*-}
+            [ -d "$prog" ] || { echo "no hi ha la carpeta $prog"; exit 1; }
+            files=$(ls out/$prog*.COM out/$prog.TXT out/$prog.CFG $prog/*.ASM 2>/dev/null)
+            gh release create "$tag" --target "$GITHUB_SHA" --title "$prog $ver" \
+              --notes "$prog $ver per a MS-DOS 3.x (Amstrad PC1512). Vegeu $prog.TXT." $files
+          done
