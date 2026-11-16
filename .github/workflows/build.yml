@@ -58,7 +58,7 @@ jobs:
             prog=$(echo "${tag%%-*}" | tr a-z A-Z)
             ver=${tag#*-}
             [ -d "$prog" ] || { echo "no hi ha la carpeta $prog"; exit 1; }
-            files=$(ls out/$prog*.COM out/$prog.TXT out/$prog.CFG $prog/*.ASM 2>/dev/null)
+            files=$(ls out/$prog*.COM out/$prog.TXT out/$prog.CFG $prog/*.ASM 2>/dev/null || true)
             gh release create "$tag" --target "$GITHUB_SHA" --title "$prog $ver" \
               --notes "$prog $ver per a MS-DOS 3.x (Amstrad PC1512). Vegeu $prog.TXT." $files
           done
