@@ -1,0 +1,112 @@
+IOPATCH per a MS-DOS 3.20                                    versi¢ 5.0
+
+Quä Çs
+------
+IOPATCH converteix l'IO.SYS de Microsoft de l'MS-DOS 3.20 en un IO.SYS
+amb men£ d'arrencada (MS-DOS / DOS Plus / ...), ratol°, compte enrere,
+colors i memïria convencional fins a 736 KB. No cal el FIXLDR. Es pot
+desfer (/U) i l'IO.SYS torna a quedar exactament com era.
+El men£ es configura amb IOCONFIG.COM (vegeu IOCONFIG.TXT).
+
+Contingut
+---------
+IOPATCH.COM   el programa
+IOCONFIG.COM  el configurador del men£
+IOPATCH.TXT   aquest fitxer
+IOCONFIG.TXT  el manual de l'IOCONFIG
+Fonts (NASM): IOPATCH.ASM, IOMENU.ASM, IOX.ASM, IOCONFIG.ASM, CFG.INC,
+DRAW.INC i DRLDR.BIN (els primers 2064 bytes del carregador de disc dur
+de Digital Research). Per assemblar-ho tot:  sh BUILD.SH
+
+Com funciona
+------------
+- IOPATCH copia l'IO.SYS de Microsoft sencer a DOS.SYS (ocult, de
+  sistema i nomÇs de lectura). ês el sistema que s'arrenca quan es tria
+  l'MS-DOS. El MSDOS.SYS no es toca.
+- DesprÇs substitueix els primers 5120 bytes de l'IO.SYS pel carregador
+  de Digital Research (el mateix que instal˙lava el FIXLDR) amb el men£
+  i la configuraci¢. La resta de l'IO.SYS no canvia.
+- L'IO.SYS no canvia de mida ni de lloc al disc, i en conserva els
+  atributs. Abans de tocar l'IO.SYS comprova que el DOS.SYS s'ha escrit
+  bÇ; si no el pot crear (disc ple...), no toca res.
+- Si hi ha RAM entre 640 i 736 KB (A000h-B7FFh), el carregador l'afegeix
+  al comptador de la BIOS abans d'arrencar el sistema.
+- El carregador nomÇs arrenca des del disc dur.
+
+IO.SYS que reconeix
+-------------------
+IO.SYS de Microsoft (MS-DOS 3.20), pel seu CRC32:
+  732A8228  castellÖ (Amstrad), 16235 bytes
+  841BA4E3  castellÖ, 16508 bytes
+  2AE4F3A1  castellÖ, 16511 bytes
+  57DF53B2  angläs,   16426 bytes
+  FA6444AE  francäs,  16504 bytes
+Si Çs un altre IO.SYS de Microsoft, diu que no el coneix i no fa res;
+amb /F l'accepta igualment. TambÇ reconeix:
+- un IO.SYS fet amb el FIXLDR (qualsevol versi¢) amb el seu DOS.SYS: hi
+  posa el men£; /U el deixa com l'IO.SYS de Microsoft;
+- un IO.SYS amb el men£ (IOPATCH 4.x o 5.0): l'actualitza i en conserva
+  la configuraci¢.
+
+Ès
+--
+  IOPATCH            aplica el pedaá a C:\IO.SYS
+  IOPATCH A:         aplica el pedaá a A:\IO.SYS
+  IOPATCH /U         el desfÖ: l'IO.SYS torna a ser el de Microsoft (els
+                     5120 bytes es recuperen del DOS.SYS) i, si el
+                     DOS.SYS l'havia creat l'IOPATCH, l'esborra.
+                     NO esborris el DOS.SYS a mÖ.
+  IOPATCH /F         accepta un IO.SYS de Microsoft desconegut
+Si ja hi ha un DOS.SYS que no Çs igual que l'IO.SYS de Microsoft, no
+toca res (esborra'l o canvia-li el nom si sobra).
+ERRORLEVEL: 0 correcte (o no calia fer res), 1 no troba l'IO.SYS o
+sintaxi incorrecta, 2 no el reconeix (no ha tocat res), 3 error en
+escriure.
+
+Instal˙laci¢ des de zero
+------------------------
+1. Arrenca des del disquet de sistema de l'MS-DOS 3.20.
+2. FDISK (si cal) i FORMAT C: /S. La partici¢ ha de ser de menys de
+   32 MB (el DOS Plus 1.2 no en llegeix de mÇs grans).
+3. Copia l'MS-DOS al disc dur.
+4. IOPATCH, desprÇs IOCONFIG (opcional) i reinicia.
+Per afegir el DOS Plus, a l'arrel de C:
+   DOSPLUS.SYS   el sistema (el carregador el busca amb aquest nom)
+   DOSPLUS.COM   el COMMAND.COM del DOS Plus, canviat de nom
+Quan hi ha el DOSPLUS.SYS, el men£ surt sol.
+
+Un sol sistema
+--------------
+Si nomÇs hi ha el DOS.SYS, no surt el men£: arrenca directament
+l'MS-DOS. Mantenint premuda Maj (Shift) en arrencar, surt igualment; a
+l'IOCONFIG, "Men£ amb un sol sistema: S°" fa que surti sempre.
+
+Memïria a 86Box
+---------------
+Targeta d'ampliaci¢ de memïria ISA genärica PC/XT a 640 KB, mida 96 KB
+(compilaci¢ 10871 o posterior). CHKDSK: 753664 bytes.
+
+Disquets d'arrencada
+--------------------
+Un FORMAT A: /S o un SYS A: fet des del disc dur copia l'IO.SYS amb el
+carregador, que nomÇs sap arrencar des del disc dur: no serveix per
+recuperar un disc dur espatllat. Per fer un disquet de sistema de
+veritat, arrenca des del disquet original de l'MS-DOS 3.20.
+
+Histïria
+--------
+1     Men£ amb el cursor (barra en negatiu).
+2     Compte enrere de 5 a 0 i MS-DOS (F2) per defecte.
+3     RAM entre 640 i 736 KB.
+4     Men£ configurable (IOCONFIG): colors, t°tol, noms, temps, ratol°
+      Amstrad o Microsoft, men£ amb un sol sistema, Maj foráa el men£.
+4.1   NomÇs es redibuixa el que canvia; cursor de ratol° lliure.
+4.2   Velocitat, color i posici¢ del cursor del ratol°; clic de
+      l'Amstrad.
+4.3   Un clic selecciona, doble clic arrenca.
+4.4   El men£ amaga el cursor de text (la BIOS del PC1512 no ho fa).
+4.4B  IOCONFIG: F9 restaura l'IO.BAK.
+4.5   Disposici¢ clÖssica del men£ (a dalt a l'esquerra).
+5.0   Ja no cal el FIXLDR: s'aplica directament a l'IO.SYS de Microsoft
+      (castellÖ, angläs, francäs) i es desfÖ amb /U. El carregador
+      carrega tambÇ el darrer registre incomplet del DOS.SYS.

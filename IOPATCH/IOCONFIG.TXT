@@ -1,0 +1,60 @@
+IOCONFIG per a l'IOPATCH (MS-DOS 3.20)                       versi¢ 5.0
+
+QuŠ ‚s
+------
+IOCONFIG configura el men£ d'arrencada que posa l'IOPATCH a l'IO.SYS:
+colors, t¡tol, noms dels sistemes, temps, sistema per defecte, ratol¡ i
+disposici¢. Nom‚s canvia els 160 bytes de la configuraci¢ dins l'IO.SYS
+(sense canviar-ne la mida ni el lloc al disc).
+
+és
+--
+  IOCONFIG           configura C:\IO.SYS
+  IOCONFIG A:        configura A:\IO.SYS
+
+Tecles
+------
+  Amunt/Avall        camp
+  Esquerra/Dreta     canvia el valor
+  Retorn             edita un text (Retorn accepta, Esc cancelúla)
+  F2                 vista prŠvia (com es veur… en arrencar)
+  F9                 restaura l'IO.BAK
+  F10                desa
+  Esc                surt (pregunta si hi ha canvis sense desar)
+
+Camps
+-----
+- T¡tol del men£ i noms dels 5 sistemes (DOSPLUS.SYS, DOS.SYS,
+  CCPM.SYS, CPCDOS.SYS, CDOS286.SYS).
+- Colors (text i fons) de la pantalla, del t¡tol, de les opcions i de
+  l'opci¢ seleccionada.
+- Temps: 0 a 99 segons, o sense l¡mit. Sistema per defecte.
+- Ratol¡: cap, Amstrad, Microsoft a COM1 o COM2; velocitat, color i
+  posici¢ inicial del cursor. Un clic selecciona, doble clic arrenca.
+- Men£ amb un sol sistema: S¡ / No.
+- Disposici¢ del men£:
+    Centrada   t¡tol a dalt en una barra, opcions al mig, l¡nia d'ajuda
+               i "Arrencada en 5 s" a sota.
+    Cl…ssica   a dalt a l'esquerra, com les primeres versions:
+                   F1 = DOS Plus 1.2
+                   F2 = MS-DOS 3.20
+
+                   Escull sistema operatiu: 5
+               Sense l¡nia d'ajuda. Per amagar el t¡tol, posa-hi la
+               tinta igual que el fons.
+
+IO.BAK
+------
+En desar, primer copia tot l'IO.SYS a IO.BAK. F9 copia l'IO.BAK damunt
+de l'IO.SYS i l'anterior passa a IO.BAK (tornant a pr‚mer F9 es desf…).
+Si l'IO.BAK ‚s d'una versi¢ sense men£ configurable, el restaura i
+l'IOCONFIG acaba: per tornar a tenir el men£, executa IOPATCH.
+
+Hist•ria
+--------
+4     Primera versi¢ (amb l'IOPATCH 4): vista prŠvia, IO.BAK.
+4.1   Nom‚s es redibuixa el camp que canvia.
+4.2   Opcions del cursor del ratol¡; els valors no deixen restes.
+4.4B  F9: restaura l'IO.BAK.
+4.5   Camp "Disposici¢ del men£" (centrada / cl…ssica).
+5.0   Per a l'IOPATCH 5.0 (sense FIXLDR).

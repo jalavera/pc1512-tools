@@ -1,0 +1,68 @@
+IOPATCH6 per a MS-DOS 6.22                                   versi¢ 1.0
+
+QuŠ ‚s
+------
+IOPATCH6 fa que l'MS-DOS 6.22 faci servir la RAM entre 640 i 736 KB
+(A000h-B7FFh) com a mem•ria convencional. s per a l'IO.SYS de l'MS-DOS
+6.22 sol a la partici¢ (sense men£ ni DOS.SYS). Es pot desfer (/U) i
+l'IO.SYS torna a quedar exactament com era.
+
+Contingut
+---------
+IOPATCH6.COM  el programa
+IOPATCH6.ASM  el codi font (nasm -f bin IOPATCH6.ASM -o IOPATCH6.COM)
+IOPATCH6.TXT  aquest fitxer
+
+Com funciona
+------------
+L'IO.SYS de l'MS-DOS 6 comen‡a amb un petit carregador (MSLOAD) que
+pregunta a la BIOS quanta mem•ria hi ha (INT 12h). El peda‡ canvia
+aquesta pregunta per una crida a una rutina de 120 bytes, posada en una
+zona de zeros del mateix MSLOAD, que si la BIOS diu exactament 640 KB
+prova la RAM de 16 KB en 16 KB entre A0000 i B7FFF (sense esborrar-la),
+augmenta el valor de la BIOS i despr‚s fa l'INT 12h original. Nom‚s
+canvien 124 bytes; l'IO.SYS no canvia de mida ni de lloc al disc i en
+conserva els atributs. Si no hi ha RAM a A0000, no canvia res (640 KB).
+
+és
+--
+  IOPATCH6           aplica el peda‡ a C:\IO.SYS
+  IOPATCH6 A:        aplica el peda‡ a A:\IO.SYS
+  IOPATCH6 /U        el desf…: l'IO.SYS torna a ser l'original
+  IOPATCH6 /F        accepta un IO.SYS desconegut amb la mateixa
+                     estructura
+Reconeix els IO.SYS de l'MS-DOS 6.22 en castell… (40963 bytes, CRC32
+A92837B5) i en anglŠs (40774 bytes, A7EA3BE4).
+ERRORLEVEL: 0 correcte (o no calia fer res), 1 no troba l'IO.SYS o
+sintaxi incorrecta, 2 no el reconeix (no ha tocat res), 3 error en
+escriure.
+Comprovaci¢: CHKDSK diu 753.664 bytes de mem•ria total; MEM, 736 KB.
+
+Mapa de mem•ria del PC1512
+--------------------------
+  00000-9FFFF  640 KB  RAM de la placa
+  A0000-B7FFF   96 KB  ampliaci¢ -> mem•ria convencional (736 KB)
+  B8000-BFFFF   32 KB  v¡deo (CGA): no es pot fer servir
+  C0000-FBFFF          ampliaci¢ -> mem•ria superior (UMB), amb un
+                       controlador d'UMB per a 8086 i DOS=UMB
+  FC000-FFFFF          ROM de la BIOS
+La mem•ria convencional no pot passar de 736 KB perquŠ a B8000 hi ha
+el v¡deo. Un 8086 no t‚ HMA ni mem•ria estesa: DOS=HIGH no fa res.
+
+A 86Box
+-------
+Targeta d'ampliaci¢ de mem•ria ISA genŠrica PC/XT a 640 KB, mida 96 KB
+(compilaci¢ 10871 o posterior). Si tamb‚ hi poses RAM per a mem•ria
+superior, que no coincideixi amb la ROM de la controladora del disc
+(per exemple la SCSI LCS-6821N a CC00-CFFF).
+
+Consells
+--------
+- Si no fas servir DoubleSpace/DriveSpace, esborra C:\DRVSPACE.BIN i
+  C:\DBLSPACE.BIN (ATTRIB -H -S -R abans).
+- BUFFERS=10, FILES=20, FCBS=1 i LASTDRIVE ajustat deixen m‚s mem•ria
+  convencional lliure.
+
+Hist•ria
+--------
+1.0   Primera versi¢: MS-DOS 6.22 castell… i anglŠs.

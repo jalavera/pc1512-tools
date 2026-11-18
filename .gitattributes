@@ -3,3 +3,4 @@
 *.TXT -text
 *.CFG -text
 *.INC -text
+*.BIN binary

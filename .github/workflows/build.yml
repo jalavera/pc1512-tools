@@ -4,7 +4,8 @@ name: Build
 # Build > Run workflow, i a "release" el nom programa-versió (p. ex.
 # loadhi-0.18; se'n poden posar uns quants separats per espais). També
 # en fa una si es puja una etiqueta amb aquest nom. La Release porta el
-# .COM, el .TXT (i el .CFG) i el codi font del programa.
+# .COM, el .TXT (i el .CFG) i el codi font del programa (tots els
+# fitxers de la seva carpeta a out/ i les fonts).
 
 on:
   push:
@@ -30,16 +31,27 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq nasm
       - name: Assemble
         run: |
-          mkdir -p out
-          for asm in */*.ASM; do
-            dir=$(dirname "$asm"); name=$(basename "$asm" .ASM)
-            nasm -f bin "$asm" -o "out/$name.COM"
-            if grep -aq "%ifdef TRACE" "$asm"; then
-              nasm -f bin -DTRACE "$asm" -o "out/${name:0:6}T.COM"
+          # Cada carpeta va a out/CARPETA/. Si la carpeta té un BUILD.SH
+          # (programes de més d'un fitxer), el fa servir; si no, assembla
+          # cada .ASM per separat.
+          for dir in */; do
+            dir=${dir%/}
+            ls "$dir"/*.ASM >/dev/null 2>&1 || continue
+            mkdir -p "out/$dir"
+            if [ -f "$dir/BUILD.SH" ]; then
+              (cd "$dir" && sh BUILD.SH "../out/$dir")
+            else
+              for asm in "$dir"/*.ASM; do
+                name=$(basename "$asm" .ASM)
+                nasm -f bin "$asm" -o "out/$dir/$name.COM"
+                if grep -aq "%ifdef TRACE" "$asm"; then
+                  nasm -f bin -DTRACE "$asm" -o "out/$dir/${name:0:6}T.COM"
+                fi
+              done
             fi
-            cp "$dir"/*.TXT "$dir"/*.CFG out/ 2>/dev/null || true
+            cp "$dir"/*.TXT "$dir"/*.CFG "out/$dir/" 2>/dev/null || true
           done
-          ls -l out
+          ls -lR out
       - uses: actions/upload-artifact@v5
         with:
           name: pc1512-tools
@@ -58,7 +70,7 @@ jobs:
             prog=$(echo "${tag%%-*}" | tr a-z A-Z)
             ver=${tag#*-}
             [ -d "$prog" ] || { echo "no hi ha la carpeta $prog"; exit 1; }
-            files=$(ls out/$prog*.COM out/$prog.TXT out/$prog.CFG $prog/*.ASM 2>/dev/null || true)
+            files=$(ls out/$prog/* $prog/*.ASM $prog/*.INC $prog/*.BIN $prog/BUILD.SH 2>/dev/null || true)
             gh release create "$tag" --target "$GITHUB_SHA" --title "$prog $ver" \
-              --notes "$prog $ver per a MS-DOS 3.x (Amstrad PC1512). Vegeu $prog.TXT." $files
+              --notes "$prog $ver per a l'Amstrad PC1512. Vegeu $prog.TXT." $files
           done
