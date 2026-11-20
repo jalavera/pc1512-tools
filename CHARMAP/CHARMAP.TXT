@@ -1,0 +1,78 @@
+CHARMAP 0.7 - Mapa de carÖcters per al GEM 2.0 (Amstrad PC1512)
+================================================================
+
+Quä Çs
+------
+Un accessori d'escriptori del GEM. Afegeix l'entrada "CarÖcters" al
+men£ dels accessoris (el de la dreta de la barra de men£s). Mostra
+tots els carÖcters de la font del sistema del GEM (32-255) amb el seu
+codi, i permet compondre una cadena i escriure-la a l'aplicaci¢ que
+hi ha al davant (BASIC2, per exemple).
+
+Instal˙laci¢
+------------
+   COPY A:CHARMAP.ACC C:\GEMBOOT
+
+i torna a entrar al GEM. Per treure'l, esborra C:\GEMBOOT\CHARMAP.ACC.
+El GEM carrega tots els fitxers .ACC del directori \GEMBOOT en arrencar.
+
+Com es fa servir
+----------------
+   clic          tria un carÖcter: es marca en invers i a sota se'n
+                 veu el codi en decimal i hexadecimal
+   doble clic    el tria i l'afegeix a la cadena (de fet, un clic
+                 sobre el carÖcter que ja estÖ triat l'afegeix: no
+                 depän de la velocitat de doble clic del GEM ni de la
+                 de l'emulador, i tambÇ va a poc a poc)
+   Afegeix       afegeix el carÖcter triat a la cadena (mÖxim 22)
+   Esborra       treu l'£ltim carÖcter de la cadena
+   Envia         tanca la finestra i escriu la cadena a l'aplicaci¢
+                 que queda al davant
+
+Amb la finestra al davant, tambÇ amb el teclat:
+   una tecla     afegeix aquell carÖcter a la cadena (i el marca)
+   RetrocÇs      treu l'£ltim carÖcter de la cadena
+   Retorn        envia la cadena
+   Esc           tanca la finestra
+
+Envia tanca la finestra perquä el GEM dona les tecles a la finestra
+del davant. Per tornar a fer-lo servir, obre'l de nou des del men£.
+
+Trucs
+-----
+* Els codis s¢n els del joc de carÖcters del GEM, no els del DOS. Els
+  mateixos n£meros serveixen amb Alt + teclat numäric dins del GEM
+  (Alt Çs la tecla Opci¢ al Mac). Per a les min£scules accentuades,
+  la §, la á i la ê coincideixen amb el DOS.
+* Les maj£scules accentuades nomÇs es veuen si tens el controlador
+  AMSTRAD.SYS ampliat (paquet de KEYBX). Amb l'original, a les
+  posicions C7-D7 hi ha buits.
+* Hi ha posicions buides (C2-C6, D3, D4, D8-DF, FF): la font del GEM
+  2.0 d'Amstrad no hi tÇ cap dibuix.
+* Amb KEYBX /GEM, les tecles mortes fan les maj£scules accentuades del
+  GEM sense haver d'obrir el mapa.
+* L'accessori ocupa uns 6 KB de memïria mentre el GEM Çs obert.
+* El GEM 2.0 nomÇs carrega 3 fitxers d'accessori de \GEMBOOT. Si vols
+  tambÇ la Shell de DOS sense ocupar un altre lloc, fes servir
+  EINES.ACC (CarÖcters i Shell de DOS en un sol fitxer) en lloc de
+  CHARMAP.ACC.
+* Muntatge: nasm -f bin CHARMAP.ASM -o CHARMAP.ACC
+
+Historial
+---------
+0.1  Entrada al men£ i finestra amb la graella de carÖcters.
+0.2  Triar amb el ratol°, l°nia del codi, cadena i botons Afegeix,
+     Esborra i Envia. NomÇs es redibuixa el que canvia.
+0.3  Finestra mÇs baixa (cabia just a la pantalla de 200 l°nies).
+0.4  L'enviament es fa amb la reproducci¢ de tecles del GEM
+     (appl_tplay) en lloc de la cua de teclat de la BIOS, que el GEM
+     no recollia.
+0.5  Corregit: desprÇs d'Envia l'accessori es quedava bloquejat i no
+     es podia tornar a obrir.
+0.7  20-11-2026: el doble clic no afegia res. Ara, un clic sobre el
+     carÖcter ja triat l'afegeix a la cadena (el GEM ja no espera el
+     temps del doble clic: cada clic respon de seguida).
+0.6  20-11-2026: amb la finestra al davant, les tecles s'afegeixen a
+     la cadena (RetrocÇs esborra, Retorn envia, Esc tanca). La
+     capáalera ja no demana tota la memïria al GEM.
+

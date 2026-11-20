@@ -1,0 +1,85 @@
+GEMHI 0.3 - El GEM amb la seva mem•ria a la zona alta (PC1512)
+==============================================================
+
+QuŠ fa
+------
+Engega el GEM i, mentre arrenca, fa que el que el GEM carrega pel seu
+compte vagi a la mem•ria alta (la zona de LOADHI) en lloc de la
+convencional:
+   AMSTRAD.SYS (controlador de pantalla)   40 KB
+   accessoris (CALCLOCK, SNAPSHOT, EINES)  ~51 KB
+   GEM.RSC i mem•ria interna del GEM       ~26 KB
+Tamb‚ GEMVDI (5 KB) i GEMHI mateix (3 KB) van a dalt.
+S¢n uns 120 KB m‚s de mem•ria convencional per a les aplicacions GEM
+(BASIC2, Paint, Write...) i per a la Shell de DOS.
+
+Com ho fa: es copia a un bloc de la zona alta i hi queda mentre dura
+el GEM (uns 3 KB) vigilant les peticions de mem•ria al DOS. Mentre el GEM arrenca, tapa un
+moment la mem•ria convencional lliure i el DOS li dona un bloc de la
+zona alta. Quan el GEM engega l'escriptori (la primera aplicaci¢), ho
+deixa de fer: les aplicacions reben mem•ria convencional com sempre.
+Els blocs continuen essent del GEM: quan en surts, el DOS els allibera.
+Si a dalt no hi cap, aquell bloc va a la convencional, com abans.
+
+GEMVDI es carrega a dalt amb la mem•ria convencional tapada (EXEC
+4B01h: carregar sense executar) i despr‚s se li passa el control.
+Quan GEMVDI s'ha carregat, GEMHI li posa com a pare COMMAND.COM (amb
+la mateixa adre‡a de tornada que tenia GEMHI) i allibera els seus
+blocs de baix: a la mem•ria convencional no en queda res. Quan
+GEMVDI acaba, GEMHI treu el seu ganxo, diu l'informe i el DOS
+allibera el bloc de dalt.
+GEMVDI rep la ruta completa (C:\GEMSYS\GEMVDI.EXE) perquŠ MEM en
+trobi la carpeta.
+
+Cal
+---
+- La zona alta de LOADHI (LOADHI /H al CONFIG.SYS) amb lloc lliure:
+  uns 120 KB (al tros gran n'hi ha 168).
+- MS-DOS 3.20 o posterior.
+
+Instalúlaci¢
+------------
+1. Copia GEMHI.COM a C:\ (o a una carpeta del PATH).
+2. Al fitxer que engega el GEM (GEM.BAT o similar), canvia la l¡nia
+      GEMVDI ...
+   per
+      GEMHI GEMVDI ...
+   amb els mateixos par…metres que tingu‚s. Si GEMVDI hi surt amb
+   carpeta (\GEMSYS\GEMVDI), posa-la igual: GEMHI \GEMSYS\GEMVDI.
+3. Engega el GEM com sempre.
+En sortir del GEM, GEMHI diu quants blocs ha posat a dalt i on.
+
+Per comprovar-ho: a la Shell de DOS del GEM, MEM /D (0.23 o
+posterior): AMSTRAD, CALCLOCK, EINES... han de sortir a la mem•ria
+superior, i la convencional lliure ha de ser uns 120 KB m‚s gran.
+
+Si alguna cosa va malament
+--------------------------
+Torna a posar la l¡nia com era (GEMVDI sense GEMHI) i tot ‚s com
+abans: GEMHI no canvia cap fitxer. Digues quŠ passa i la sortida de
+MEM /D.
+
+Trucs
+-----
+- Peticions de m‚s de 64 KB i les consultes de mem•ria lliure no es
+  toquen: van sempre a la convencional.
+- GEMHI fa servir el segon EXEC per saber que el GEM ja ha arrencat
+  (el primer ‚s el de GEMVDI que engega GEM.EXE).
+- Muntatge: nasm -f bin GEMHI.ASM -o GEMHI.COM
+
+Fitxers
+-------
+GEMHI.COM   el programa
+GEMHI.ASM   el codi font
+GEMHI.TXT   aquest fitxer
+
+Historial
+---------
+0.3  20-11-2026  GEMHI mateix va a la zona alta: no queda res seu a
+                 la convencional mentre dura el GEM.
+0.2  20-11-2026  GEMVDI es carrega a la zona alta. Ruta completa del
+                 programa a l'entorn.
+0.1  20-11-2026  Primera versi¢: AMSTRAD.SYS, accessoris i recursos
+                 a la zona alta (provada amb el GEM real: +115 KB de
+                 convencional). Les versions 0.2 i 0.3 nom‚s s'han
+                 provat al simulador.

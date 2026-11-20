@@ -1,5 +1,5 @@
 ; =====================================================================
-;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.12
+;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.26
 ;
 ;  Substitut de MEM 6.22 que entÇn les estructures de DOS 3.x:
 ;  - noms de programa tret de l'entorn (DOS 3 no els desa al MCB)
@@ -20,6 +20,8 @@ F_F     equ     4
 F_M     equ     8
 F_P     equ     16
 F_H     equ     32
+F_NP    equ     64                      ; /NP o /P-: sense pausa
+F_G     equ     128                     ; /G: cerca dels fitxers del GEM
 
 MAXBLK  equ     200
 MAXBUF  equ     128                     ; BUFFERS que MEM /D pot ordenar
@@ -30,6 +32,7 @@ MAXGRP  equ     16
 MAXGV   equ     16
 RESGV   equ     9               ; vectors per fila a la taula
 MAXDEV  equ     48
+MAXLAB  equ     24              ; fitxers del GEM reconeguts dins els blocs
 
 C_VIDEO equ     0
 C_ROM   equ     1
@@ -41,6 +44,7 @@ C_EMPTY equ     6
 C_ZERO  equ     7
 C_RAMFF equ     8               ; RAM sense usar, plena de FFh
 C_RAM0  equ     9               ; RAM sense usar, a zero
+C_DOSK  equ     10              ; nucli del DOS a dalt (HIDOS)
 
 start:
         cld
@@ -55,7 +59,18 @@ start:
         jnc     .p_ok
         mov     ax,4C01h
         int     21h
-.p_ok:  test    byte [flags],F_H
+.p_ok:  or      byte [flags],F_P        ; pÖgina a pÖgina per defecte,
+        test    byte [flags],F_NP       ;   menys amb /NP o /P-, o si la
+        jnz     .np                     ;   sortida no Çs la pantalla
+        mov     ax,4400h                ;   (MEM > FITXER)
+        mov     bx,1
+        int     21h
+        jc      .np
+        and     dl,82h                  ; dispositiu i consola de sortida
+        cmp     dl,82h
+        je      .pp
+.np:    and     byte [flags],~F_P
+.pp:    test    byte [flags],F_H
         jz      .nohelp
         call    show_help
         jmp     exit_ok
@@ -504,6 +519,8 @@ parse:  mov     si,81h
         jz      .done
         cmp     al,'/'
         je      .switch
+        cmp     al,'-'                  ; -D, -C... com a /D, /C
+        je      .switch
         dec     si
         cmp     byte [wantname],0
         je      .badparm
@@ -517,6 +534,14 @@ parse:  mov     si,81h
         call    upcase
         cmp     al,'?'
         je      .st
+        cmp     al,'-'                  ; '-' nomÇs a /P- (si no, Çs
+        jne     .sl2                    ;   l'inici d'una altra opci¢)
+        cmp     cx,1
+        jne     .se
+        cmp     byte [swbuf],'P'
+        jne     .se
+        jmp     short .st
+.sl2:
         cmp     al,'A'
         jb      .se
         cmp     al,'Z'
@@ -720,16 +745,782 @@ gather: mov     [mypsp],cs
         xor     bh,bh
         shl     bx,1
         mov     [reg_end+bx],ax
-.nr:    call    calc_utop
+.nr:    call    hidos_k
+        call    calc_utop
         call    scan_roms
         call    scan_chains
         call    scan_devices
         call    scan_vectors
         call    find_trans
+        call    gem_scan
         call    calc_totals
         clc
         ret
 .err:   stc
+        ret
+
+; =====================================================================
+;  GEM: els blocs de dades de GEM.EXE i GEMVDI.EXE porten a dins els
+;  accessoris (.ACC), els controladors (.SYS) i els recursos (.RSC) que
+;  el GEM carrega pel seu compte. Per a cada fitxer d'aquests de la
+;  carpeta del programa (\GEMBOOT, \GEMSYS) es busquen 16 bytes de la
+;  seva imatge (fora de les reubicacions) dins els blocs; si hi s¢n, el
+;  bloc pren el nom del fitxer.
+; =====================================================================
+gem_scan:
+        mov     word [ngp],0
+        mov     word [nlab],0
+        xor     bx,bx
+.l:     cmp     bx,[nblk]
+        jae     .dirs
+        push    bx
+        shl     bx,1
+        mov     ax,[blk_own+bx]
+        mov     dx,[blk_seg+bx]
+        pop     bx
+        inc     dx
+        cmp     ax,dx                   ; bloc de programa?
+        jne     .n
+        cmp     ax,[mypsp]
+        je      .n
+        call    name_of_owner
+        mov     si,nbuf
+        mov     di,s_gem
+        call    strcmp
+        je      .gp
+        mov     di,s_gemvdi
+        call    strcmp
+        jne     .n
+.gp:    cmp     word [ngp],2
+        jae     .n
+        mov     di,[ngp]
+        shl     di,1
+        mov     [gp_psp+di],ax
+        mov     di,[ngp]                ; carpeta: gdir + ngp*80
+        push    ax
+        mov     ax,80
+        mul     di
+        mov     di,ax
+        pop     ax
+        add     di,gdir
+        call    gem_dir                 ; CF=1: sense carpeta a l'entorn
+        jnc     .gd
+        call    gem_def                 ;   (GEM.EXE): la de per defecte
+.gd:    call    gd_prog                 ; /G: programa i carpeta
+        inc     word [ngp]              ; els seus blocs es miren igual
+.n:     inc     bx
+        jmp     .l
+.dirs:  xor     bx,bx
+.d:     cmp     bx,[ngp]
+        jae     .x
+        mov     ax,80
+        mul     bx
+        add     ax,gdir
+        mov     [gdcur],ax
+        mov     si,ax
+        cmp     byte [si],0             ; sense carpeta: res a buscar
+        je      .dn
+        mov     si,s_pacc
+        call    gem_pat
+        mov     si,s_psys
+        call    gem_pat
+        mov     si,s_prsc
+        call    gem_pat
+.dn:    inc     bx
+        jmp     .d
+.x:     call    gem_hi                  ; GEMHI copiat a dalt
+        ret
+
+; GEMHI (0.3 o posterior) es copia sencer (PSP inclïs) a un bloc de dalt
+; que passa a ser de GEMVDI: un bloc de dades d'un programa del GEM que
+; comenáa amb un PSP (CD 20) i porta el text 'GEMHI 0.'
+gem_hi: xor     bx,bx
+.l:     cmp     bx,[nblk]
+        jae     .x
+        call    gcand
+        jc      .n
+        push    bx
+        shl     bx,1
+        mov     ax,[blk_seg+bx]
+        mov     cx,[blk_size+bx]
+        pop     bx
+        inc     ax
+        mov     es,ax
+        cmp     word [es:0],20CDh
+        jne     .n
+        cmp     cx,0FFh                 ; fins a 4 KB
+        jb      .c
+        mov     cx,0FFh
+.c:     push    cx
+        mov     cl,4
+        pop     ax
+        shl     ax,cl
+        sub     ax,8
+        jbe     .n
+        mov     cx,ax
+        xor     di,di
+.s:     mov     al,'G'
+        repne   scasb
+        jne     .n
+        push    cx
+        push    di
+        mov     si,s_gemhi+1
+        mov     cx,7
+        repe    cmpsb
+        pop     di
+        pop     cx
+        je      .hit
+        jcxz    .n
+        jmp     .s
+.hit:   push    bx                      ; nom i tipus (programa)
+        mov     ax,[nlab]
+        inc     ax
+        mov     [blk_lab+bx],al
+        dec     ax
+        mov     si,ax
+        mov     byte [lab_kind+si],4
+        mov     cx,9
+        mul     cx
+        add     ax,lab_name
+        mov     di,ax
+        push    ds
+        pop     es
+        mov     si,s_gemhi
+        mov     cx,5
+        rep     movsb
+        mov     byte [di],0
+        inc     word [nlab]
+        pop     bx
+        call    gd_hi
+        ret
+.n:     inc     bx
+        jmp     .l
+.x:     ret
+
+; AX = PSP -> DS:DI = carpeta del programa (amb '\' al final). CF=1 si no
+gem_dir:
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    di
+        push    es
+        mov     es,ax
+        mov     ax,[es:2Ch]
+        or      ax,ax
+        jz      .no
+        mov     es,ax
+        xor     si,si
+        mov     cx,2000
+.z:     cmp     word [es:si],0          ; final de les variables
+        je      .z1
+        inc     si
+        loop    .z
+        jmp     .no
+.z1:    add     si,4                    ; 00 00, comptador
+        xor     bx,bx                   ; darrer '\' copiat
+        mov     cx,78
+.c:     mov     al,[es:si]
+        mov     [di],al
+        or      al,al
+        jz      .c2
+        inc     di
+        inc     si
+        cmp     al,'\'
+        jne     .c1
+        mov     bx,di
+.c1:    loop    .c
+.c2:    or      bx,bx
+        jz      .no
+        mov     byte [bx],0             ; talla desprÇs del darrer '\'
+        pop     es
+        pop     di
+        push    di
+        push    es
+        call    gabs
+        clc
+        jmp     short .r
+.no:    stc
+.r:     pop     es
+        pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        pop     ax
+        ret
+
+; DS:DI: carpeta per defecte quan l'entorn nomÇs diu GEM.EXE o
+; GEMVDI.EXE (s'engeguen des de la seva carpeta): GEMBOOT o GEMSYS
+; a la unitat de GEMVDI, o a la unitat actual si encara no s'ha vist.
+gem_def:
+        push    ax
+        push    dx
+        push    si
+        push    di
+        mov     byte [di],0
+        mov     si,nbuf
+        push    di
+        mov     di,s_gem
+        call    strcmp
+        pop     di
+        mov     dx,s_gemboot            ; GEM.EXE: GEMBOOT
+        je      .ok
+        push    di
+        mov     di,s_gemvdi
+        call    strcmp
+        pop     di
+        jne     .x
+        mov     dx,s_gemsys             ; GEMVDI: GEMSYS
+.ok:
+        mov     al,0                    ; unitat de GEMVDI, si ja hi Çs
+        cmp     word [ngp],0
+        je      .cur
+        mov     si,gdir
+        cmp     byte [si+1],':'
+        jne     .cur
+        mov     al,[si]
+        jmp     short .u
+.cur:   mov     ah,19h
+        int     21h
+        add     al,'A'
+.u:     mov     [di],al
+        inc     di
+        mov     si,dx
+        call    strcpy
+.x:     pop     di
+        pop     si
+        pop     dx
+        pop     ax
+        ret
+
+; DS:DI = carpeta sense unitat (GEMBOOT\ o \GEMBOOT\) -> cam° complet
+; amb la unitat i el directori actuals (com quan es va engegar el GEM)
+gabs:   cmp     byte [di+1],':'
+        je      .x
+        push    ds
+        pop     es
+        push    di
+        mov     si,di                   ; cïpia a fpath
+        mov     di,fpath
+        call    strcpy
+        pop     di
+        push    di
+        mov     ah,19h                  ; unitat actual
+        int     21h
+        add     al,'A'
+        mov     ah,':'
+        mov     [di],ax
+        add     di,2
+        cmp     byte [fpath],'\'
+        je      .cp
+        mov     byte [di],'\'
+        inc     di
+        mov     si,di
+        mov     dl,0
+        mov     ah,47h                  ; directori actual (sense '\')
+        int     21h
+        call    strend
+        cmp     byte [di-1],'\'
+        je      .cp
+        mov     byte [di],'\'
+        inc     di
+.cp:    mov     si,fpath
+        call    strcpy
+        pop     di
+.x:     ret
+
+; [gdcur] = carpeta, SI = '*.EXT' -> tracta cada fitxer
+gem_pat:
+        push    bx
+        mov     di,fpath
+        push    si
+        mov     si,[gdcur]
+        call    strcpy
+        call    strend
+        pop     si
+        call    strcpy
+        mov     dx,gdta
+        mov     ah,1Ah
+        int     21h
+        mov     dx,fpath
+        xor     cx,cx
+        mov     ah,4Eh
+.f:     int     21h
+        jc      .e
+        call    gem_file
+        mov     ah,4Fh
+        jmp     .f
+.e:     pop     bx
+        ret
+
+; DI -> el 0 final de la cadena DS:DI
+strend: cmp     byte [di],0
+        je      .e
+        inc     di
+        jmp     strend
+.e:     ret
+
+; un fitxer trobat (gdta): signatura i cerca als blocs del GEM
+gem_file:
+        cmp     word [nlab],MAXLAB
+        jb      .ok
+        ret
+.ok:    mov     di,fpath                ; cam° complet
+        mov     si,[gdcur]
+        call    strcpy
+        call    strend
+        mov     si,gdta+1Eh
+        call    strcpy
+        mov     dx,fpath
+        mov     ax,3D00h
+        int     21h
+        jc      .r
+        mov     [gfh],ax
+        mov     word [gmask],0
+        mov     word [gmask+2],0
+        mov     word [gimg],0
+        mov     byte [graw],1
+        mov     byte [gtries],0
+        mov     word [ghit],0FFFFh
+        mov     cx,32
+        mov     dx,fhdr
+        call    gread
+        jc      .cl
+        cmp     word [fhdr],'MZ'
+        jne     .sig
+        mov     byte [graw],0
+        mov     ax,[fhdr+8]             ; capáalera en parÖgrafs
+        mov     cl,4
+        shl     ax,cl
+        mov     [gimg],ax
+        mov     cx,[fhdr+6]             ; reubicacions (les 64 primeres)
+        jcxz    .sig
+        cmp     cx,64
+        jbe     .rc
+        mov     cx,64
+.rc:    push    cx
+        mov     dx,[fhdr+18h]
+        call    gseek
+        pop     cx
+        push    cx
+        shl     cx,1
+        shl     cx,1
+        mov     dx,frel
+        call    gread
+        pop     cx
+        jc      .cl
+        mov     si,frel
+.rl:    mov     ax,[si+2]               ; segment: dins els 512 primers?
+        cmp     ax,32
+        jae     .rn
+        push    cx
+        mov     cl,4
+        shl     ax,cl
+        add     ax,[si]
+        cmp     ax,512
+        jae     .rn0
+        mov     dx,ax
+        mov     cl,4
+        shr     ax,cl                   ; finestra de 16 bytes
+        call    gmark
+        and     dl,15                   ; i la segÅent si hi entra
+        cmp     dl,15
+        jne     .rn0
+        inc     ax
+        call    gmark
+.rn0:   pop     cx
+.rn:    add     si,4
+        loop    .rl
+.sig:   xor     bx,bx                   ; primera finestra bona
+.w:     cmp     bx,32
+        jae     .cl
+        mov     ax,bx
+        call    gtest
+        jnz     .wn
+        mov     dx,bx
+        mov     cl,4
+        shl     dx,cl
+        mov     [gsoff],dx
+        add     dx,[gimg]
+        push    bx
+        call    gseek
+        mov     cx,16
+        mov     dx,gsig
+        call    gread
+        pop     bx
+        jc      .cl
+        mov     si,gsig                 ; tots iguals? no serveix
+        mov     al,[si]
+        mov     cx,15
+.u:     inc     si
+        cmp     al,[si]
+        jne     .good
+        loop    .u
+.wn:    inc     bx
+        jmp     .w
+.good:  push    bx
+        call    gfind                   ; CF=1: no hi Çs
+        pop     bx
+        jnc     .cl
+        inc     byte [gtries]           ; prova fins a 3 finestres
+        cmp     byte [gtries],3
+        jb      .wn
+.cl:    call    gd_file                 ; /G: resultat
+        mov     bx,[gfh]
+        mov     ah,3Eh
+        int     21h
+.r:     ret
+
+gread:  mov     bx,[gfh]                ; CX bytes a DS:DX; CF si curt
+        mov     ah,3Fh
+        int     21h
+        jc      .e
+        cmp     ax,cx
+        jb      .e
+        clc
+        ret
+.e:     stc
+        ret
+
+gseek:  push    cx                      ; a DX (desplaáament < 64 KB)
+        mov     bx,[gfh]
+        xor     cx,cx
+        mov     ax,4200h
+        int     21h
+        pop     cx
+        ret
+
+gmark:  push    ax                      ; AX = finestra (0-31)
+        push    bx
+        push    cx
+        mov     cx,ax
+        cmp     ax,16
+        jb      .lo
+        sub     cl,16
+        mov     bx,1
+        shl     bx,cl
+        or      [gmask+2],bx
+        jmp     short .e
+.lo:    mov     bx,1
+        shl     bx,cl
+        or      [gmask],bx
+.e:     pop     cx
+        pop     bx
+        pop     ax
+        ret
+
+gtest:  push    bx                      ; AX = finestra -> ZF=1 si lliure
+        push    cx
+        mov     cx,ax
+        cmp     ax,16
+        jb      .lo
+        sub     cl,16
+        mov     bx,1
+        shl     bx,cl
+        test    [gmask+2],bx
+        jmp     short .e
+.lo:    mov     bx,1
+        shl     bx,cl
+        test    [gmask],bx
+.e:     pop     cx
+        pop     bx
+        ret
+
+; busca gsig als blocs de dades del GEM; si la troba, hi posa el nom
+gfind:  xor     bx,bx
+.l:     cmp     bx,[nblk]
+        jb      .t
+        cmp     byte [graw],0           ; .RSC i altres sense capáalera:
+        je      .x                      ;   si no, per la mida exacta
+        call    gfsize
+        ret
+.x:     stc
+        ret
+.t:     call    gcand
+        jc      .n
+        push    bx
+        shl     bx,1
+        mov     ax,[blk_seg+bx]
+        mov     cx,[blk_size+bx]
+        pop     bx
+        inc     ax
+        mov     es,ax
+        cmp     cx,0FFFh                ; bytes del bloc (mÖx. 64 KB)
+        jb      .c1
+        mov     cx,0FFFh
+.c1:    mov     ax,cx
+        mov     cl,4
+        shl     ax,cl
+        sub     ax,16
+        jbe     .n
+        mov     dx,ax                   ; £ltima posici¢ possible
+        xor     di,di                   ; tot el bloc
+        mov     cx,dx
+.s:     mov     al,[gsig]
+.sc:    repne   scasb
+        jne     .n
+        push    cx
+        push    di
+        mov     si,gsig+1
+        mov     cx,15
+        repe    cmpsb
+        pop     di
+        pop     cx
+        je      .hit
+        jcxz    .n
+        jmp     .sc
+.hit:   call    gname
+        clc
+        ret
+.n:     inc     bx
+        jmp     .l
+
+; BX = bloc -> CF=0 si Çs un bloc de dades d'un programa del GEM sense nom
+gcand:  push    ax
+        push    di
+        push    es
+        cmp     byte [blk_lab+bx],0
+        jne     .no
+        push    bx
+        shl     bx,1
+        mov     ax,[blk_own+bx]
+        mov     di,[blk_seg+bx]
+        pop     bx
+        inc     di
+        cmp     ax,di                   ; el programa mateix: no
+        je      .no
+        cmp     word [ngp],0
+        je      .no
+        cmp     ax,[gp_psp]
+        je      .g
+        cmp     word [ngp],2
+        jb      .no
+        cmp     ax,[gp_psp+2]
+        jne     .no
+.g:     mov     es,ax                   ; el seu entorn: no
+        cmp     [es:2Ch],di
+        je      .no
+        clc
+        jmp     short .r
+.no:    stc
+.r:     pop     es
+        pop     di
+        pop     ax
+        ret
+
+; fitxer sense capáalera MZ que no s'ha trobat: un bloc amb la mida justa
+gfsize: cmp     word [gdta+1Ch],0
+        jne     .x
+        mov     ax,[gdta+1Ah]
+        add     ax,15
+        jc      .x
+        mov     cl,4
+        shr     ax,cl
+        xor     bx,bx
+.l:     cmp     bx,[nblk]
+        jae     .x
+        call    gcand
+        jc      .n
+        push    bx
+        shl     bx,1
+        cmp     ax,[blk_size+bx]
+        pop     bx
+        jne     .n
+        call    gname
+        clc
+        ret
+.n:     inc     bx
+        jmp     .l
+.x:     stc
+        ret
+
+; BX = bloc: hi posa el nom del fitxer (gdta) i el tipus segons l'extensi¢
+gname:  mov     [ghit],bx
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    di
+        push    es
+        push    ds
+        pop     es
+        mov     ax,[nlab]
+        inc     ax
+        mov     [blk_lab+bx],al
+        dec     ax
+        mov     cx,9
+        mul     cx
+        add     ax,lab_name
+        mov     di,ax
+        mov     si,gdta+1Eh
+        xor     bl,bl                   ; tipus: 0 = altres
+        mov     cx,8
+.c:     lodsb
+        cmp     al,'.'
+        je      .p
+        or      al,al
+        jz      .z
+        stosb
+        loop    .c
+.sk:    lodsb                           ; (nom de 8: busca el punt)
+        or      al,al
+        jz      .z
+        cmp     al,'.'
+        jne     .sk
+.p:     mov     bl,1                    ; tipus per l'extensi¢
+        cmp     word [si],'AC'
+        je      .z
+        mov     bl,2
+        cmp     word [si],'SY'
+        je      .z
+        mov     bl,3                    ; .RSC: el mateix nom (a /C va
+        cmp     word [si],'RS'          ;   amb el seu programa:
+        je      .z                      ;   SNAPSHOT, GEM)
+.z0:    xor     bl,bl
+.z:     mov     byte [di],0
+        mov     si,[nlab]
+        mov     [lab_kind+si],bl
+        inc     word [nlab]
+        pop     es
+        pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        pop     ax
+        ret
+
+; ---- /G: el que fa la cerca del GEM, per veure per quä no troba res
+gd_prog:                                ; AX = PSP, DI = carpeta
+        test    byte [flags],F_G
+        jz      .x
+        call    lreset
+        mov     si,s_gd_prog
+        call    lputs
+        mov     si,nbuf
+        call    lputs
+        mov     si,s_gd_psp
+        call    lputs
+        call    lhex4
+        mov     si,s_gd_dir
+        call    lputs
+        mov     si,s_gd_nodir
+        cmp     byte [di],0
+        je      .p
+        mov     si,di
+.p:     call    lputs
+        call    lflush
+.x:     ret
+
+gd_file:
+        test    byte [flags],F_G
+        jz      .x
+        push    ax
+        push    bx
+        push    si
+        call    lreset
+        mov     si,s_gd_sp
+        call    lputs
+        mov     si,fpath
+        call    lputs
+        mov     si,s_gd_win
+        call    lputs
+        mov     ax,[gsoff]
+        call    lhex4
+        mov     si,s_gd_res
+        call    lputs
+        mov     bx,[ghit]
+        cmp     bx,0FFFFh
+        jne     .f
+        mov     si,s_gd_no
+        call    lputs
+        jmp     short .e
+.f:     shl     bx,1
+        mov     ax,[blk_seg+bx]
+        call    lhex4
+.e:     call    lflush
+        pop     si
+        pop     bx
+        pop     ax
+.x:     ret
+
+gd_hi:  test    byte [flags],F_G        ; /G: on Çs GEMHI
+        jz      .x
+        push    ax
+        push    bx
+        push    si
+        call    lreset
+        mov     si,s_gd_hi
+        call    lputs
+        shl     bx,1
+        mov     ax,[blk_seg+bx]
+        call    lhex4
+        call    lflush
+        pop     si
+        pop     bx
+        pop     ax
+.x:     ret
+
+; --- HIDOS: el nucli del DOS Çs per sobre de la memïria convencional,
+; dins el bloc de sistema que tapa el v°deo i les ROM (B7FF). kseg i
+; kend: des del segment del DOS fins al final d'aquest bloc.
+hidos_k:
+        push    ax
+        push    bx
+        push    cx
+        push    dx
+        push    es
+        mov     word [kseg],0
+        mov     word [kend],0
+        mov     word [iohi],0
+        mov     dx,[dosseg]
+        cmp     dx,[convtop]
+        jb      .r
+        mov     ax,[firstmcb]
+        mov     cx,4000
+.l:     mov     es,ax
+        cmp     dx,ax
+        jbe     .r
+        add     ax,[es:3]
+        jc      .r
+        inc     ax
+        cmp     dx,ax
+        jb      .f
+        cmp     byte [es:0],'Z'
+        je      .r
+        loop    .l
+        jmp     short .r
+.f:     mov     [kseg],dx
+        mov     [kend],ax
+        mov     word [iohi],0           ; i el BIOS (HIDOS /B)? Çs el
+        mov     ax,[firstmcb]           ;   segment de l'£ltim controlador
+        mov     [lowdrv],ax             ;   de la cadena; i de passada,
+        mov     es,dx                   ;   el primer DEVICELOW (el mÇs
+        mov     bx,[nulofs]             ;   baix entre 0070 i el 1r bloc)
+        mov     cx,100
+.c:     mov     ax,es
+        cmp     ax,70h
+        jbe     .c1
+        cmp     ax,[lowdrv]
+        jae     .c1
+        mov     [lowdrv],ax
+.c1:    les     bx,[es:bx]
+        cmp     bx,0FFFFh
+        je      .c2
+        loop    .c
+        jmp     short .r
+.c2:    mov     ax,es                   ; ES = segment de l'£ltim (BIOS)
+        cmp     ax,[convtop]
+        jb      .r
+        cmp     ax,dx
+        jae     .r
+        mov     [iohi],ax
+        mov     [kseg],ax               ; la zona del DOS comenáa al BIOS
+        mov     word [lowdrv],70h       ; i els DEVICELOW, des de 0070
+.r:     pop     es
+        pop     dx
+        pop     cx
+        pop     bx
+        pop     ax
         ret
 
 ; --- COMMAND.COM a la memïria superior (LOADHI /C): la seva part
@@ -1136,6 +1927,15 @@ scan_devices:
 ; lletres d'unitat per als controladors de bloc
 assign_letters:
         mov     byte [nextdrv],'A'
+        mov     word [biosseg],70h      ; el BIOS: l'£ltim de la cadena
+        mov     bx,[ndev]               ;   (amb HIDOS /B no Çs a 0070h)
+        or      bx,bx
+        jz      .bs
+        dec     bx
+        shl     bx,1
+        mov     ax,[dev_seg+bx]
+        mov     [biosseg],ax
+.bs:
         xor     di,di
 .p1:    cmp     di,[ndev]
         jae     .p2s
@@ -1143,7 +1943,8 @@ assign_letters:
         jnz     .p1n
         mov     bx,di
         shl     bx,1
-        cmp     word [dev_seg+bx],70h
+        mov     ax,[biosseg]
+        cmp     [dev_seg+bx],ax
         jne     .p1n
         call    .give
 .p1n:   inc     di
@@ -1156,7 +1957,8 @@ assign_letters:
         jnz     .p2
         mov     bx,di
         shl     bx,1
-        cmp     word [dev_seg+bx],70h
+        mov     ax,[biosseg]
+        cmp     [dev_seg+bx],ax
         je      .p2
         call    .give
         jmp     .p2
@@ -1187,7 +1989,13 @@ upper_target:
         jae     .no
 .c:     call    in_rom
         jc      .no
-        push    dx
+        cmp     word [kseg],0           ; el nucli del DOS (HIDOS) no
+        je      .c1                     ;   Çs un resident sense bloc
+        cmp     ax,[kseg]
+        jb      .c1
+        cmp     ax,[kend]
+        jb      .no
+.c1:    push    dx
         call    in_region
         pop     dx
         jc      .no
@@ -1649,16 +2457,18 @@ name_of_owner:
         cmp     cx,800h
         jbe     .e01
         mov     cx,800h
-.e01:   push    cx
-        mov     cl,4
-        pop     dx
+.e01:   push    cx                      ; CX = bytes del bloc (tot: el nom
+        mov     cl,4                    ;   pot arribar fins al final si
+        pop     dx                      ;   l'entorn Çs ple)
         shl     dx,cl
         mov     cx,dx
-        sub     cx,4
+        cmp     cx,4
         jbe     .mcbname
         mov     es,bx
         xor     si,si
-.e1:    cmp     si,cx
+.e1:    mov     dx,si
+        inc     dx
+        cmp     dx,cx
         jae     .mcbname
         cmp     byte [es:si],0
         jne     .e2
@@ -1667,6 +2477,10 @@ name_of_owner:
 .e2:    inc     si
         jmp     .e1
 .e3:    add     si,2
+        mov     dx,si
+        add     dx,2
+        cmp     dx,cx
+        ja      .mcbname
         cmp     word [es:si],1
         jb      .mcbname
         cmp     word [es:si],8
@@ -1864,7 +2678,10 @@ calc_totals:
 .nf:    mov     byte [runreg],0FFh
 .nx:    inc     bx
         jmp     .l
-.e:     ret
+.e:     mov     ax,[kend]               ; HIDOS: el nucli compta com a
+        sub     ax,[kseg]               ;   memïria superior usada
+        add     [utot],ax
+        ret
 
 check_ems:
         mov     byte [ems],0
@@ -1891,13 +2708,82 @@ check_ems:
 blk_name:
         push    ax
         push    bx
-        shl     bx,1
+        mov     al,[blk_lab+bx]         ; fitxer del GEM reconegut?
+        or      al,al
+        jz      .own
+        push    si
+        push    di
+        dec     al
+        mov     ah,9
+        mul     ah
+        add     ax,lab_name
+        mov     si,ax
+        mov     di,nbuf
+        call    strcpy
+        pop     di
+        pop     si
+        jmp     short .e
+.own:   shl     bx,1
         mov     ax,[blk_own+bx]
         mov     byte [nbuf],0
         or      ax,ax
         jz      .e
-        call    name_of_owner
+        cmp     ax,8                    ; bloc de sistema amb nom (un
+        jne     .o                      ;   DEVICELOW de HIDOS)?
+        push    bx
+        shr     bx,1
+        call    drvname
+        pop     bx
+        jnc     .e
+.o:     call    name_of_owner
 .e:     pop     bx
+        pop     ax
+        ret
+
+; BX = °ndex d'un bloc de sistema (propietari 0008h): tÇ nom a la
+; capáalera (8 lletres a +8, com el DOS 4; HIDOS el posa als
+; DEVICELOW)? CF=0 i el nom a nbuf; si no (o Çs SC, SD o HIDOS), CF=1
+drvname:
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    es
+        shl     bx,1
+        mov     es,[blk_seg+bx]
+        mov     al,[es:8]
+        cmp     al,'0'
+        jb      .no
+        cmp     al,'Z'
+        ja      .no
+        cmp     word [es:8],'SC'
+        je      .s2
+        cmp     word [es:8],'SD'
+        jne     .h
+.s2:    cmp     byte [es:10],' '
+        jbe     .no
+.h:     cmp     word [es:8],'HI'
+        jne     .ok
+        cmp     word [es:10],'DO'
+        je      .no
+.ok:    mov     si,8
+        xor     bx,bx
+        mov     cx,8
+.c:     mov     al,[es:si]
+        cmp     al,' '
+        jbe     .z
+        mov     [nbuf+bx],al
+        inc     si
+        inc     bx
+        loop    .c
+.z:     mov     byte [nbuf+bx],0
+        clc
+        jmp     short .r
+.no:    stc
+.r:     pop     es
+        pop     si
+        pop     cx
+        pop     bx
         pop     ax
         ret
 
@@ -1906,7 +2792,29 @@ blk_type:
         push    ax
         push    bx
         push    es
-        mov     si,s_t_trans
+        mov     al,[blk_lab+bx]         ; fitxer del GEM: segons l'extensi¢
+        or      al,al
+        jz      .tt
+        dec     al
+        xor     ah,ah
+        mov     si,ax
+        mov     al,[lab_kind+si]
+        mov     si,s_t_gdat
+        cmp     al,1
+        jne     .k2
+        mov     si,s_t_gacc
+.k2:    cmp     al,2
+        jne     .k3
+        mov     si,s_t_gdrv
+.k3:    cmp     al,3
+        jne     .k4
+        mov     si,s_t_grsc
+        jmp     .e
+.k4:    cmp     al,4
+        jne     .e
+        mov     si,s_t_prog
+        jmp     .e
+.tt:    mov     si,s_t_trans
         inc     bx
         cmp     bx,[trans_ix]
         je      .e
@@ -1918,14 +2826,38 @@ blk_type:
         jz      .e
         mov     si,s_t_sysdata
         cmp     ax,8
-        je      .e
+        jne     .t1
+        shr     bx,1
+        push    word [nbuf]             ; (drvname escriu a nbuf)
+        call    drvname
+        pop     word [nbuf]
+        mov     si,s_t_sysdata
+        jc      .e
+        mov     si,s_t_device
+        jmp     .e
+.t1:
         mov     si,s_t_prog
         mov     bx,[blk_seg+bx]
         inc     bx
         cmp     ax,bx
         je      .e
         mov     si,s_t_data
-        cmp     ax,40h
+        cmp     word [ngp],0            ; d'un programa del GEM: Datos GEM
+        je      .ng
+        cmp     ax,[gp_psp]
+        je      .gd
+        cmp     word [ngp],2
+        jb      .ng
+        cmp     ax,[gp_psp+2]
+        jne     .ng
+.gd:    push    es
+        mov     es,ax
+        cmp     [es:2Ch],bx             ; (el seu entorn no)
+        pop     es
+        je      .ng
+        mov     si,s_t_gdat
+        jmp     .e
+.ng:    cmp     ax,40h
         jb      .e
         mov     es,ax
         cmp     word [es:0],20CDh
@@ -2248,6 +3180,9 @@ build_modules:
         call    find_mod
         mov     ax,[firstmcb]
         mov     [mod_conv],ax
+        mov     ax,[kend]               ; HIDOS: el nucli, a dalt
+        sub     ax,[kseg]
+        mov     [mod_up],ax
         xor     bx,bx
 .l:     cmp     bx,[nblk]
         jae     .e
@@ -2273,7 +3208,32 @@ build_modules:
 .a:     pop     bx
 .n:     inc     bx
         jmp     .l
-.e:     ret
+.e:     xor     di,di                   ; DEVICE= de dalt amb capáalera de
+.d:     cmp     di,[ndev]               ;   HIDOS: un mïdul a part, que es
+        jae     .de                     ;   treu de MSDOS
+        push    di
+        shl     di,1
+        mov     ax,[dev_seg+di]
+        mov     cx,[dev_off+di]
+        pop     di
+        or      cx,cx
+        jnz     .dn
+        cmp     ax,[convtop]
+        jb      .dn
+        call    hdrchk
+        jc      .dn
+        mov     si,hname
+        push    di
+        mov     di,nbuf
+        call    strcpy
+        pop     di
+        call    find_mod
+        shl     bx,1
+        add     [mod_up+bx],cx
+        sub     [mod_up],cx
+.dn:    inc     di
+        jmp     .d
+.de:    ret
 
 ; fila de /C: SI = nom, AX = conv, BX = sup (parÖgrafs)
 cls_row:
@@ -2677,8 +3637,15 @@ dbg_devs:
         mov     [dd_lo],ax
         mov     [dd_hi],bx
         mov     [dd_type],di
-        xor     bx,bx
-.l:     cmp     bx,[ndev]
+        mov     [dd_reg],dl
+        xor     bx,bx                   ; (els controladors instal˙lats, en
+        mov     word [dd_dir],1         ;   ordre invers de la cadena: per
+        cmp     di,s_t_device           ;   adreáa, del primer al darrer)
+        jne     .l
+        mov     bx,[ndev]
+        dec     bx
+        mov     word [dd_dir],-1
+.l:     cmp     bx,[ndev]               ; (-1 tambÇ surt: Çs >= ndev)
         jae     .e
         push    bx
         shl     bx,1
@@ -2689,7 +3656,26 @@ dbg_devs:
         jb      .n
         cmp     ax,[dd_hi]
         jae     .n
-        call    dev_label
+        or      cx,cx                   ; controlador amb capáalera de
+        jnz     .lb                     ;   HIDOS (DEVICE= a dalt): una
+        push    cx                      ;   fila amb el seu nom i mida
+        call    hdrchk
+        jc      .nh
+        push    ax
+        push    dx
+        push    si
+        push    di
+        dec     ax
+        mov     si,hname
+        mov     di,s_t_device
+        mov     dl,[dd_reg]
+        call    dbg_row
+        pop     di
+        pop     si
+        pop     dx
+        pop     ax
+.nh:    pop     cx
+.lb:    call    dev_label
         mov     di,[dd_type]
         cmp     ax,[dosseg]
         jbe     .t
@@ -2698,7 +3684,7 @@ dbg_devs:
         mov     di,s_t_device
 .t:     mov     si,dlab
         call    dbg_sub
-.n:     inc     bx
+.n:     add     bx,[dd_dir]
         jmp     .l
 .e:     pop     di
         pop     si
@@ -2706,6 +3692,50 @@ dbg_devs:
         pop     cx
         pop     bx
         pop     ax
+        ret
+
+; AX = segment d'un controlador: tÇ davant la capáalera que hi posa
+; HIDOS ('D', segment, mida, nom, com els subblocs del DOS 4)? CF=0,
+; el nom a hname i CX = parÖgrafs (capáalera inclosa)
+hdrchk: push    es
+        push    si
+        push    di
+        push    ax
+        dec     ax
+        mov     es,ax
+        inc     ax
+        cmp     byte [es:0],'D'
+        jne     .no
+        cmp     [es:1],ax
+        jne     .no
+        mov     cx,[es:3]
+        jcxz    .no
+        mov     al,[es:8]
+        cmp     al,'0'
+        jb      .no
+        cmp     al,'Z'
+        ja      .no
+        inc     cx
+        push    cx
+        mov     si,8
+        xor     di,di
+        mov     cx,8
+.c:     mov     al,[es:si]
+        cmp     al,' '
+        jbe     .z
+        mov     [hname+di],al
+        inc     si
+        inc     di
+        loop    .c
+.z:     mov     byte [hname+di],0
+        pop     cx
+        clc
+        jmp     short .r
+.no:    stc
+.r:     pop     ax
+        pop     di
+        pop     si
+        pop     es
         ret
 
 do_debug:
@@ -2731,16 +3761,24 @@ do_debug:
         mov     cx,20h
         mov     di,s_t_dosc
         call    dbg_row
+        cmp     word [kseg],0           ; HIDOS: IO (si no Çs a dalt) i
+        je      .io0                    ;   els DEVICELOW
+        call    dbg_low
+        jmp     .nod
+.io0:   mov     bx,[dosseg]             ; final de l'IO: el DOS
+.io:    push    bx
         mov     ax,70h
-        mov     cx,[dosseg]
+        mov     cx,bx
         sub     cx,70h
         mov     si,s_io
         mov     di,s_t_sysdata
         call    dbg_row
         mov     ax,70h
-        mov     bx,[dosseg]
+        pop     bx
         mov     di,s_t_sysdrv
         call    dbg_devs
+        cmp     word [kseg],0
+        jne     .nod
         mov     ax,[dosseg]
         mov     cx,[firstmcb]
         sub     cx,ax
@@ -2750,6 +3788,7 @@ do_debug:
         mov     bx,[firstmcb]
         mov     di,s_t_sysdrv
         call    dbg_devs
+.nod:
         ; blocs convencionals
         xor     bx,bx
 .l:     cmp     bx,[nblk]
@@ -2769,7 +3808,33 @@ do_debug:
         call    pline
         mov     si,s_udbg_d
         call    pline
-        xor     bx,bx
+        cmp     word [kseg],0           ; HIDOS: primer, el nucli
+        je      .uk
+        cmp     word [iohi],0           ; (i abans, el BIOS amb /B)
+        je      .uk1
+        mov     ax,[iohi]
+        mov     cx,[dosseg]
+        sub     cx,ax
+        mov     si,s_io
+        mov     di,s_t_sysdata
+        xor     dl,dl
+        call    dbg_row
+        mov     ax,[iohi]
+        mov     bx,[dosseg]
+        mov     di,s_t_sysdrv
+        call    dbg_devs
+.uk1:   mov     ax,[dosseg]
+        mov     cx,[kend]
+        sub     cx,ax
+        mov     si,s_msdos
+        mov     di,s_t_sysprog
+        xor     dl,dl
+        call    dbg_row
+        mov     ax,[dosseg]
+        mov     bx,[kend]
+        mov     di,s_t_sysdrv
+        call    dbg_devs
+.uk:    xor     bx,bx
 .u:     cmp     bx,[nblk]
         jae     .noup
         cmp     byte [blk_reg+bx],0
@@ -2786,6 +3851,35 @@ do_debug:
         mov     byte [colB],61
         call    summary_table
         ret
+
+; HIDOS: a baix, l'IO (sense /B) i els DEVICELOW
+dbg_low:
+        mov     bx,[lowdrv]
+        cmp     word [iohi],0
+        jne     .d
+        mov     ax,70h
+        mov     cx,bx
+        sub     cx,ax
+        mov     si,s_io
+        mov     di,s_t_sysdata
+        xor     dl,dl
+        call    dbg_row
+        mov     ax,70h
+        mov     di,s_t_sysdrv
+        call    dbg_devs
+.d:     mov     ax,[lowdrv]
+        mov     cx,[firstmcb]
+        sub     cx,ax
+        jbe     .e
+        mov     si,s_msdos
+        mov     di,s_t_sysdata
+        xor     dl,dl
+        call    dbg_row
+        mov     ax,[lowdrv]
+        mov     bx,[firstmcb]
+        mov     di,s_t_device
+        call    dbg_devs
+.e:     ret
 
 ; BX = °ndex de bloc
 dbg_blk:
@@ -3200,7 +4294,12 @@ next_b:
         mov     bx,ax
         and     bx,0FF80h
         add     bx,80h
-        xor     si,si
+        mov     cx,[kseg]               ; l°mits del nucli (HIDOS)
+        jcxz    .k2
+        call    .lim
+        mov     cx,[kend]
+        call    .lim
+.k2:    xor     si,si
 .g:     cmp     si,[ngrp]
         jae     .x
         push    si
@@ -3224,6 +4323,14 @@ next_b:
 .x:     pop     si
         pop     cx
         ret
+.lim:   cmp     ax,cx                   ; CX dins (AX, BX)? -> BX = CX
+        jae     .lm2
+        or      bx,bx
+        jz      .lm1
+        cmp     cx,bx
+        jae     .lm2
+.lm1:   mov     bx,cx
+.lm2:   ret
 
 ; fila de mapa de [m_start] fins a BX (exclusiu)
 map_row:
@@ -3296,6 +4403,15 @@ classify:
         push    es
         mov     [cl_ax],ax
         mov     [cl_end],bx
+        mov     dl,C_DOSK               ; nucli del DOS (HIDOS)?
+        cmp     word [kseg],0
+        je      .k0
+        cmp     ax,[kseg]
+        jb      .k0
+        cmp     ax,[kend]
+        jae     .k0
+        jmp     .x
+.k0:
         mov     dl,C_VIDEO
         cmp     ax,[vidend]
         jae     .r
@@ -3459,6 +4575,14 @@ do_module:
         mov     cx,[firstmcb]
         mov     di,s_t_sysdata
         call    mod_row
+        cmp     word [kseg],0           ; HIDOS: el nucli, a dalt
+        je      .bl
+        xor     dl,dl
+        mov     ax,[kseg]
+        mov     cx,[kend]
+        sub     cx,ax
+        mov     di,s_t_sysprog
+        call    mod_row
 .bl:    xor     bx,bx
 .l:     cmp     bx,[nblk]
         jae     .le
@@ -3582,7 +4706,8 @@ nlines  dw      0
 
 swtab   dw      sw_c, F_C, sw_classify, F_C, sw_d, F_D, sw_debug, F_D
         dw      sw_f, F_F, sw_free, F_F, sw_m, F_M, sw_module, F_M
-        dw      sw_p, F_P, sw_page, F_P, sw_q, F_H, 0, 0
+        dw      sw_p, F_P, sw_page, F_P, sw_q, F_H
+        dw      sw_np, F_NP, sw_pm, F_NP, sw_g, F_G, 0, 0
 sw_c    db      'C',0
 sw_classify db  'CLASSIFY',0
 sw_d    db      'D',0
@@ -3593,10 +4718,14 @@ sw_m    db      'M',0
 sw_module db    'MODULE',0
 sw_p    db      'P',0
 sw_page db      'PAGE',0
+sw_np   db      'NP',0
+sw_pm   db      'P-',0
 sw_q    db      '?',0
+sw_g    db      'G',0
 
 cls_txt dw      s_c_video, s_c_rom, s_c_chain, s_c_resid, s_c_sysrom
         dw      s_c_used, s_c_empty, s_c_zero, s_c_ramff, s_c_ram0
+        dw      s_c_dosk
 
 s_emm   db      'EMMXXXX0'
 s_msdos db      'MSDOS',0
@@ -3692,6 +4821,27 @@ s_t_prog db     'Programa',0
 s_t_trans db    'Parte transitoria',0
 s_t_env db      'Entorno',0
 s_t_data db     'Datos',0
+s_t_gacc db     'Accesorio GEM',0
+s_t_gdrv db     'Controlador GEM',0
+s_t_grsc db     'Recursos GEM',0
+s_t_gdat db     'Datos GEM',0
+s_gem   db      'GEM',0
+s_gemvdi db     'GEMVDI',0
+s_pacc  db      '*.ACC',0
+s_psys  db      '*.SYS',0
+s_prsc  db      '*.RSC',0
+s_gemboot db    ':\GEMBOOT\',0
+s_gemsys db     ':\GEMSYS\',0
+s_gd_prog db    'GEM: programa ',0
+s_gd_psp db     '  PSP ',0
+s_gd_dir db     '  carpeta ',0
+s_gd_nodir db   '(ninguna)',0
+s_gd_sp db      '  ',0
+s_gd_win db     '  firma +',0
+s_gd_res db     ' -> ',0
+s_gd_no db      'no encontrado',0
+s_gemhi db      'GEMHI 0.'
+s_gd_hi db      'GEM: GEMHI (copia residente) en el bloque ',0
 
 s_map1  db      'Contenido de la memoria de ',0
 s_map2  db      ' a FFFFF:',0
@@ -3709,6 +4859,7 @@ s_c_empty db    'Sin memoria (lee FFh)',0
 s_c_zero db     'Sin memoria (lee 00h)',0
 s_c_ramff db    'RAM sin usar (fuera de DOS, llena de FFh)',0
 s_c_ram0 db     'RAM sin usar (fuera de DOS, a cero)',0
+s_c_dosk db     'MS-DOS en memoria superior (HIDOS)',0
 
 s_mod_title db  ' est† usando esta cantidad de memoria:',0
 s_mod_h db      '   Direcci¢n    Regi¢n         Total       Tipo',0
@@ -3721,7 +4872,7 @@ s_mod_res2 db   ' bytes',0
 help_txt:
         db      'Muestra la cantidad de memoria libre y usada en el sistema.',0
         db      0
-        db      'MEM [/CLASSIFY | /DEBUG | /FREE | /MODULE m¢dulo] [/PAGE]',0
+        db      'MEM [/CLASSIFY | /DEBUG | /FREE | /MODULE m¢dulo] [/NP]',0
         db      0
         db      '  /CLASSIFY o /C  Clasifica programas por el uso de memoria. Lista el tama§o',0
         db      '                  de programas, proporciona un resumen de memoria en uso y',0
@@ -3734,9 +4885,13 @@ help_txt:
         db      '  /MODULE o /M    Muestra una lista en detalle de memoria usada por m¢dulos.',0
         db      '                  Esta opci¢n debe usarse seguida por el nombre de un m¢dulo,',0
         db      '                  y separada de la /M por dos puntos.',0
-        db      '  /PAGE o /P      Muestra informaci¢n pantalla por pantalla.',0
+        db      '  /NP o /P-       Sin pausas. Por omisi¢n se muestra pantalla por',0
+        db      '                  pantalla (/PAGE o /P), salvo si la salida va a',0
+        db      '                  un archivo (MEM > ARCHIVO).',0
+        db      '  /G              Dentro del GEM: muestra quÇ archivos del GEM busca',0
+        db      '                  en la memoria y d¢nde los encuentra.',0
         db      0
-        db      'MEM 0.12 para MS-DOS 3.x (PC1512).',0
+        db      'MEM 0.26 para MS-DOS 3.x (PC1512).',0
         db      0FFh
 
 ; ---------------------------------------------------------------------
@@ -3786,7 +4941,10 @@ rs_tot  equ     rs_free+2
 dd_lo   equ     rs_tot+2
 dd_hi   equ     dd_lo+2
 dd_type equ     dd_hi+2
-m_start equ     dd_type+2
+dd_reg  equ     dd_type+2
+hname   equ     dd_reg+2                ; 10
+dd_dir  equ     hname+10
+m_start equ     dd_dir+2
 m_cls   equ     m_start+2
 m_endlo equ     m_cls+2
 m_endhi equ     m_endlo+2
@@ -3841,4 +4999,29 @@ t_prot  equ     t_fcb+2
 guard   equ     t_prot+2
 nbufs   equ     guard+2               ; buffers recollits
 bufl    equ     nbufs+2               ; adreces lineals (dword)
-bss_end equ     bufl+MAXBUF*4
+kseg    equ     bufl+MAXBUF*4         ; nucli del DOS a dalt (HIDOS):
+kend    equ     kseg+2                ;   inici i final (0 = no)
+iohi    equ     kend+2                ; BIOS (IO) a dalt (HIDOS /B): segment
+lowdrv  equ     iohi+2                ; HIDOS: DEVICELOW des d'aqu° fins al
+biosseg equ     lowdrv+2              ;   primer bloc (= 1r bloc: cap)
+blk_lab equ     biosseg+2             ; segment del BIOS (l'£ltim de la cadena)
+nlab    equ     blk_lab+MAXBLK        ; fitxers del GEM: °ndex+1 per bloc
+lab_name equ    nlab+2
+lab_kind equ    lab_name+MAXLAB*9
+ngp     equ     lab_kind+MAXLAB       ; GEM.EXE i GEMVDI.EXE: PSP i carpeta
+gp_psp  equ     ngp+2
+gdir    equ     gp_psp+4
+gdcur   equ     gdir+160
+fpath   equ     gdcur+2
+gdta    equ     fpath+96
+fhdr    equ     gdta+44
+frel    equ     fhdr+32
+gsig    equ     frel+256
+gsoff   equ     gsig+16
+gmask   equ     gsoff+2
+gimg    equ     gmask+4
+graw    equ     gimg+2
+gfh     equ     graw+2
+gtries  equ     gfh+2
+ghit    equ     gtries+2
+bss_end equ     ghit+2

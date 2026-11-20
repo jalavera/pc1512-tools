@@ -7,7 +7,10 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | Programa | Versió | Què fa |
 |---|---|---|
 | [LOADHI](LOADHI/) | 0.18 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM |
-| [MEM](MEM/) | 0.12 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS |
+| [MEM](MEM/) | 0.26 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos |
+| [GEMHI](GEMHI/) | 0.3 | Engega el GEM 2.0 amb GEMVDI, AMSTRAD.SYS, els accessoris i els recursos a la memòria superior (uns 120 KB més de convencional) |
+| [CHARMAP](CHARMAP/) | 0.7 | Accessori del GEM 2.0: mapa de caràcters que escriu una cadena a l'aplicació del davant |
+| [EINES](EINES/) | 0.3 | Accessori del GEM 2.0: CHARMAP i una Shell de DOS en un sol fitxer (el GEM 2.0 només carrega 3 accessoris) |
 | [IOPATCH](IOPATCH/) | 5.0 | Pedaç de l'IO.SYS del MS-DOS 3.20: menú d'arrencada (MS-DOS / DOS Plus...) amb ratolí i compte enrere, i memòria convencional fins a 736 KB, sense FIXLDR; es desfà amb /U. Amb IOCONFIG per configurar el menú |
 | [IOPATCH6](IOPATCH6/) | 1.0 | Pedaç de l'IO.SYS del MS-DOS 6.22: memòria convencional fins a 736 KB; es desfà amb /U |
 
@@ -20,6 +23,9 @@ Els executables (`.COM`) són a les
 nasm -f bin LOADHI/LOADHI.ASM -o LOADHI.COM
 nasm -f bin -DTRACE LOADHI/LOADHI.ASM -o LOADHIT.COM   (versió de prova)
 nasm -f bin MEM/MEM.ASM -o MEM.COM
+nasm -f bin GEMHI/GEMHI.ASM -o GEMHI.COM
+nasm -f bin CHARMAP/CHARMAP.ASM -o CHARMAP.ACC   (accessori del GEM)
+nasm -f bin EINES/EINES.ASM -o EINES.ACC         (accessori del GEM)
 nasm -f bin IOPATCH6/IOPATCH6.ASM -o IOPATCH6.COM
 cd IOPATCH && sh BUILD.SH                (IOPATCH.COM i IOCONFIG.COM)
 ```
@@ -48,6 +54,8 @@ català.
   IOPATCH6 és per al MS-DOS 6.22.
 - Per a la memòria superior: RAM entre 640 KB i 1 MB (per exemple les
   targetes de memòria *Generic PC/XT* de 86Box).
+- GEMHI, CHARMAP i EINES: el GEM 2.0 de l'Amstrad PC1512. GEMHI
+  necessita la zona alta de LOADHI.
 
 ## Codi d'altres
 

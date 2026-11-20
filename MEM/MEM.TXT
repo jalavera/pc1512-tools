@@ -1,4 +1,4 @@
-MEM per a MS-DOS 3.20                                       versi¢ 0.12
+MEM per a MS-DOS 3.20                                       versi¢ 0.26
 =====================                                       15-11-2026
 
 QuŠ ‚s
@@ -35,10 +35,16 @@ nom; de tota manera DOS executa abans el .COM que el .EXE.
                     de B8000h a FFFFFh
   MEM /F            blocs lliures
   MEM /M:KEYBX      blocs d'un programa (tamb‚ MEM /M KEYBX)
-  MEM /P            atura cada pantalla (es pot combinar: MEM /D /P)
+  MEM /NP o /P-     sense pauses (es pot combinar: MEM /D /NP)
+Per defecte MEM s'atura a cada pantalla ("Presione cualquier tecla
+para continuar"): /P i /PAGE es poden posar per• ja no fan res. No
+s'atura si la sortida va a un fitxer o a la impressora (MEM /D >
+MEMD.TXT): ho detecta sol.
   MEM /?            ajuda
 Les formes llargues (/CLASSIFY, /DEBUG, /FREE, /MODULE, /PAGE) tamb‚
 funcionen. La sortida es pot redirigir: MEM /D > MEM.TXT
+Les opcions tamb‚ es poden escriure amb gui¢ (-D, -C, -D-G) i
+juntes (/D/G).
 
 Com troba el que hi ha per sobre de 736 KB
 ------------------------------------------
@@ -89,6 +95,35 @@ Casos especials:
 - Si no hi ha manera de saber-ho, surt "?" i el segment del PSP
   (p. ex. ?0A3C). Amb MEM /M:?0A3C se'n veuen els blocs.
 
+Dins del GEM
+------------
+Des d'una shell de DOS oberta dins el GEM (EINES.ACC, Shell de DOS),
+els blocs de dades de GEM.EXE i GEMVDI.EXE porten a dins coses que el
+GEM carrega pel seu compte. MEM les reconeix i les mostra a part:
+  CALCLOCK, EINES...   Accesorio GEM     (els .ACC de \GEMBOOT)
+  AMSTRAD              Controlador GEM   (els .SYS de \GEMSYS)
+  GEM, SNAPSHOT...     Recursos GEM      (els .RSC: amb el nom del
+                                          programa, i a /C hi van junts)
+Com ho fa: per a cada .ACC, .SYS i .RSC de la carpeta de GEM.EXE i de
+GEMVDI.EXE (la treu del seu entorn), llegeix 16 bytes del principi del
+fitxer, evitant les posicions que el DOS canvia en carregar-lo, i els
+busca als primers KB de cada bloc de dades del GEM. Un .RSC que no es
+troba aix¡ es reconeix per la mida exacta. El que no ‚s cap fitxer
+surt com a "Datos GEM" (mem•ria pr•pia del GEM).
+Si el GEM s'ha engegat amb GEMHI 0.3 o posterior, la c•pia de GEMHI
+que queda a dalt (un bloc que ‚s de GEMVDI) surt com a GEMHI,
+Programa.
+Si la ruta de GEM.EXE de l'entorn no porta carpeta (nom‚s GEM.EXE,
+perquŠ el GEM s'engega des de la seva carpeta), MEM fa servir
+\GEMBOOT\ a la unitat de GEMVDI; i per a GEMVDI.EXE, \GEMSYS\. Si porta carpeta per• no unitat
+(GEMBOOT\GEM.EXE), hi posa la unitat i el directori actuals.
+Les aplicacions (BASIC2, Paint, Write...) ja surten amb el seu nom,
+perquŠ el GEM les executa com a programes de DOS.
+Si no en reconeix cap, MEM /G mostra quŠ busca i on:
+  GEM: programa GEM  PSP 01C9  carpeta C:\GEMBOOT\
+    C:\GEMBOOT\CALCLOCK.ACC  firma +0010 -> 1EAB
+    C:\GEMBOOT\SNAPSHOT.ACC  firma +0010 -> no encontrado
+
 DiferŠncies amb MEM 6.22
 ------------------------
 - No mostra XMS ni l'…rea de mem•ria alta (el PC1512 ‚s un 8086).
@@ -110,6 +145,71 @@ Recomanacions
 
 Historial
 ---------
+0.26 20-11-2026  Les opcions tamb‚ accepten el gui¢: -D, -C, -D-G...
+                 (abans "Par metro no v lido - -D-G").
+0.25 20-11-2026  La c•pia resident de GEMHI (dins un bloc de GEMVDI) surt
+                 amb el seu nom; els blocs de dades del GEM que no s¢n
+                 cap fitxer surten com a "Datos GEM".
+0.24 20-11-2026  GEMVDI sense carpeta a l'entorn (engegat amb GEMHI
+                 0.1-0.2): es busca a \GEMSYS\, i AMSTRAD.SYS torna a
+                 sortir amb el seu nom.
+0.23 20-11-2026  Els .RSC surten amb el nom sense extensi¢
+                 (SNAPSHOT.RSC feia 12 lletres, passava de la columna
+                 i espatllava la taula de /C). A /C el recurs va amb
+                 el seu programa: SNAPSHOT = accessori + SNAPSHOT.RSC,
+                 GEM = GEM.EXE + GEM.RSC; a /D surten per separat
+                 amb el tipus "Recursos GEM".
+0.22 20-11-2026  Al GEM real, l'entorn de GEM.EXE nom‚s diu "GEM.EXE"
+                 (sense carpeta): la 0.21 no el comptava i no mirava
+                 ni els seus blocs (on hi ha AMSTRAD.SYS i els
+                 accessoris) ni \GEMBOOT. Ara els blocs del GEM es
+                 miren sempre i la carpeta ‚s \GEMBOOT\ a la unitat
+                 de GEMVDI. /G: corregit "carpeta" quan no n'hi ha.
+0.21 20-11-2026  La 0.20 no reconeixia res dins el GEM real. Ara: si la
+                 ruta de GEM.EXE no porta unitat, s'hi afegeix la
+                 unitat i el directori actuals; la cerca mira tot el
+                 bloc (no nom‚s els primers 4 KB) i prova fins a 3
+                 finestres de 16 bytes. Nova opci¢ /G: mostra quŠ
+                 busca i on ho troba.
+0.20 20-11-2026  Dins del GEM: els accessoris (.ACC), els controladors
+                 (.SYS) i els recursos (.RSC) que el GEM carrega als
+                 seus blocs de dades surten amb el seu nom i tipus
+                 (Accesorio GEM, Controlador GEM, Recursos GEM), tamb‚
+                 a /C i /M. Provat al simulador amb CALCLOCK, EINES,
+                 AMSTRAD.SYS i GEM.RSC; NO provat encara dins el GEM.
+0.19 20-11-2026  Pantalla a pantalla per defecte; /NP o /P- per treure
+                 les pauses; /P i /PAGE es continuen acceptant. Si la
+                 sortida no ‚s la pantalla (MEM > FITXER), no s'atura.
+0.18 20-11-2026  Si l'entorn d'un programa era just ple (el nom del
+                 programa acabava als 4 darrers bytes del bloc), no en
+                 trobava el nom i sortia ?xxxx (p. ex. GEMVDI amb un
+                 PATH una mica m‚s llarg). Ara llegeix el bloc sencer.
+0.17 19-11-2026  HIDOS 0.7: els controladors de la mem•ria superior
+                 amb cap‡alera (DEVICE= i DEVICEHIGH=) surten a
+                 MEM /D amb el seu nom i mida, a sota de MSDOS, i a
+                 MEM /C com a m•duls a part. Els controladors
+                 instalúlats surten per ordre d'adre‡a.
+0.16 19-11-2026  HIDOS 0.6: un bloc de sistema amb nom a la cap‡alera
+                 (cada DEVICELOW) surt amb el seu nom i tipus DEVICE=
+                 a MEM /D, i com a m•dul a part a MEM /C.
+0.15 19-11-2026  HIDOS 0.5: els controladors carregats amb DEVICELOW=
+                 surten a la mem•ria convencional (MSDOS, Datos de
+                 sistema, amb els controladors com a DEVICE=). El BIOS
+                 de dalt (/B) es troba encara que hi hagi controladors
+                 al davant, i les lletres d'unitat dels controladors de
+                 bloc surten b‚ amb /B.
+0.14 19-11-2026  HIDOS /B: si el BIOS del DOS (IO) tamb‚ ‚s a la
+                 mem•ria superior, MEM /D el mostra a dalt (IO, Datos
+                 de sistema, amb els controladors CON...COM2) i a baix
+                 ja no surt una fila d'IO buida. El mapa de B8000 a
+                 FFFFF diu "MS-DOS en memoria superior (HIDOS)".
+0.13 19-11-2026  HIDOS: si el nucli del DOS ‚s a la mem•ria superior,
+                 MEM /D el mostra a la mem•ria superior (MSDOS, Programa
+                 de sistema, amb el NUL), l'IO acaba al primer bloc, el
+                 mapa de B8000 a FFFFF diu "N£cleo de MS-DOS" i ja no
+                 el confon amb un resident sense bloc. /C i /M MSDOS hi
+                 compten el nucli com a mem•ria superior. Sense HIDOS,
+                 tot surt igual que amb la 0.12.
 0.12 15-11-2026  MEM /D: secci¢ nova "Buffers, archivos y FCB" (nom‚s
                  MS-DOS 3.1 a 3.3). Resegueix les cadenes del DOS (llista
                  de llistes, INT 21h AH=52h) i diu, per a cada tros, les

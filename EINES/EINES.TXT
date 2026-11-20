@@ -1,0 +1,104 @@
+EINES 0.3 - CarÖcters i Shell de DOS per al GEM 2.0 (Amstrad PC1512)
+=====================================================================
+
+Quä Çs
+------
+Un sol accessori d'escriptori del GEM amb dues entrades al men£ dels
+accessoris (el de la dreta de la barra de men£s):
+   CarÖcters      el mapa de carÖcters (CHARMAP 0.7)
+   Shell de DOS   obre el DOS en mode text; amb EXIT es torna al GEM
+                  (abans DOSSHELL 0.2)
+Surten a totes les aplicacions GEM, no nomÇs a l'escriptori.
+
+Per quä un sol fitxer: el GEM 2.0 nomÇs carrega 3 fitxers d'accessori
+de \GEMBOOT (CALCLOCK.ACC, que porta Calculadora, Reloj i Spooler
+impresora, en compta un). Amb EINES.ACC, CarÖcters i Shell de DOS
+n'ocupen un, i en queda un altre per a SNAPSHOT.
+
+Instal˙laci¢
+------------
+   DEL C:\GEMBOOT\CHARMAP.ACC
+   DEL C:\GEMBOOT\DOSSHELL.ACC
+   COPY A:EINES.ACC C:\GEMBOOT
+i, si vols, torna a posar SNAPSHOT a \GEMBOOT. Torna a entrar al GEM.
+Al GEMBOOT hi ha d'haver nomÇs 3 fitxers .ACC (o SNAPSHOT): CALCLOCK,
+EINES i SNAPSHOT.
+
+CarÖcters
+---------
+   clic          tria un carÖcter: es marca en invers i a sota se'n
+                 veu el codi en decimal i hexadecimal
+   doble clic    el tria i l'afegeix a la cadena (de fet, un clic
+                 sobre el carÖcter que ja estÖ triat l'afegeix: no
+                 depän de la velocitat de doble clic del GEM ni de la
+                 de l'emulador, i tambÇ va a poc a poc)
+   Afegeix       afegeix el carÖcter triat a la cadena (mÖxim 22)
+   Esborra       treu l'£ltim carÖcter de la cadena
+   Envia         tanca la finestra i escriu la cadena a l'aplicaci¢
+                 que queda al davant
+Amb la finestra al davant, tambÇ amb el teclat:
+   una tecla     afegeix aquell carÖcter a la cadena (i el marca)
+   RetrocÇs      treu l'£ltim carÖcter de la cadena
+   Retorn        envia la cadena
+   Esc           tanca la finestra
+Envia tanca la finestra perquä el GEM dona les tecles a la finestra
+del davant. Per tornar-lo a fer servir, obre'l de nou des del men£.
+
+Shell de DOS
+------------
+La pantalla passa a mode text i s'obre el COMMAND.COM de COMSPEC (si
+no n'hi ha, C:\COMMAND.COM). Escriu EXIT per tornar: el GEM redibuixa
+la barra de men£s, l'escriptori i les finestres.
+- Cal memïria de DOS lliure (uns 28 KB). Si no n'hi ha, surt una
+  alerta amb els KB lliures i no passa res mÇs.
+- Mentre ets al DOS, el GEM estÖ aturat (rellotge, accessoris...).
+- No executis el GEM, ni programes residents (TSR), des d'aqu°: el
+  GEM continua a la memïria.
+
+Trucs
+-----
+* Els codis de CarÖcters s¢n els del joc del GEM, no els del DOS. Els
+  mateixos n£meros serveixen amb Alt + teclat numäric dins del GEM
+  (Alt Çs la tecla Opci¢ al Mac). Per a les min£scules accentuades,
+  la §, la á i la ê coincideixen amb el DOS.
+* Les maj£scules accentuades nomÇs es veuen amb el controlador
+  AMSTRAD.SYS ampliat (paquet de KEYBX). Amb l'original, a C7-D7 hi
+  ha buits. A C2-C6, D3, D4, D8-DF i FF la font no tÇ cap dibuix.
+* Amb KEYBX /GEM, les tecles mortes fan les maj£scules accentuades del
+  GEM sense haver d'obrir el mapa.
+* L'accessori fa 8 KB. La barra de men£s es guarda, mentre dura la
+  shell, en un bloc de memïria de DOS que s'allibera en tornar.
+* Muntatge: nasm -f bin EINES.ASM -o EINES.ACC
+
+Fitxers
+-------
+EINES.ACC   l'accessori
+EINES.ASM   el codi font
+EINES.TXT   aquest fitxer
+
+Historial
+---------
+0.1  20-11-2026  CHARMAP 0.5 i DOSSHELL 0.2 en un sol accessori, amb
+                 dues entrades al men£. La capáalera ja no demana tota
+                 la memïria.
+0.3  20-11-2026  CarÖcters com CHARMAP 0.7: el doble clic (un clic
+                 sobre el carÖcter ja triat) afegeix a la cadena.
+0.2  20-11-2026  CarÖcters com CHARMAP 0.6: el teclat afegeix a la
+                 cadena (RetrocÇs, Retorn, Esc). NO provat encara dins
+                 el GEM real.
+
+Historial de CHARMAP
+0.1  Entrada al men£ i finestra amb la graella de carÖcters.
+0.2  Triar amb el ratol°, l°nia del codi, cadena i botons Afegeix,
+     Esborra i Envia. NomÇs es redibuixa el que canvia.
+0.3  Finestra mÇs baixa (cabia just a la pantalla de 200 l°nies).
+0.4  L'enviament es fa amb la reproducci¢ de tecles del GEM
+     (appl_tplay) en lloc de la cua de teclat de la BIOS.
+0.5  Corregit: desprÇs d'Envia l'accessori es quedava bloquejat.
+0.6  Teclat: les tecles s'afegeixen a la cadena.
+0.7  Doble clic: un clic sobre el carÖcter triat l'afegeix.
+
+Historial de DOSSHELL
+0.1  Primera versi¢ (el GEM no la carregava: fitxer de 13 KB que
+     demanava tota la memïria).
+0.2  Fitxer de 3 KB; barra de men£s en un bloc de DOS.
