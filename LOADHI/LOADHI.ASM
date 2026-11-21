@@ -1,5 +1,5 @@
 ;  LOADHI.ASM  -  carrega programes a la mem•ria superior amb MS-DOS 3.x
-;                                                               versi¢ 0.18
+;                                                               versi¢ 0.20
 ;  és:  LOADHI [@fitxer] [/H:inici[-final]] [/F] [/B:n] [/FILES:n] [/C]
 ;              [/R:n] [/RB:n] [/RC:n] [programa [par…metres]]
 ;
@@ -136,7 +136,7 @@ start:  cld
         mov     byte [o_r],0            ; /R: a la l¡nia SHELL= no fa res
         call    make_zone
         TSTEP   '1'
-        call    walk
+.zdone: call    walk
         call    regions
         mov     bx,o_rb                 ; /RB i /RC: el tros ha d'existir
         call    chk_reg
@@ -171,7 +171,12 @@ start:  cld
         or      al,[o_rb]
         or      al,[o_rc]
         jz      .hv1
-        mov     dx,m_shonly
+        call    first_prog              ; la zona ja hi ‚s (la fa el DOS:
+        jc      .hv0                    ;   HIDOS) i som el SHELL=: /C,
+        mov     byte [isshell],1        ;   /B i /FILES s¡ que valen
+        mov     byte [o_r],0
+        jmp     .zdone
+.hv0:   mov     dx,m_shonly
         jmp     fail
 .hv1:   cmp     byte [o_h],0
         je      .go
@@ -1766,7 +1771,7 @@ m_tros2 db      ': lliure $'
 m_low   db      'No hi cap a la zona alta: es carrega a la mem•ria convencional.',CR,LF,'$'
 m_xerr  db      'No s',27h,'ha pogut executar el programa.',CR,LF,'$'
 m_badfmt db     'El programa no t‚ un format v…lid (els .BAT no es poden carregar).',CR,LF,'$'
-m_help  db      'LOADHI 0.18 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
+m_help  db      'LOADHI 0.20 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
         db      CR,LF
         db      'LOADHI [@fitxer] [/H:ini[-fi]] [/F] [/B:n] [/FILES:n] [/C] [/R:n]',CR,LF
         db      '       [/RB:n] [/RC:n]',CR,LF
@@ -2365,9 +2370,15 @@ stub:   mov     ax,cs
         int     21h
         mov     ah,48h
         int     21h
-        mov     cl,'2'
-        jc      .err
-        mov     [S(st_b2)],ax
+        jnc     .any2
+        mov     cx,[S(st_b1)]           ; no queda res m‚s: si el primer
+        cmp     cx,UBASE                ;   ja ‚s a dalt (HIDOS ja tapa la
+        jb      .any1                   ;   convencional), n'hi ha prou
+        xchg    ax,cx
+        jmp     short .z
+.any1:  mov     cl,'2'
+        jmp     .err
+.any2:  mov     [S(st_b2)],ax
         VSTEP   'd'
         mov     ax,[S(st_b1)]
         cmp     ax,UBASE

@@ -1,0 +1,74 @@
+WAIT 0.1 - Espera amb compte enrere per a fitxers .BAT
+======================================================
+
+Programa petit (1 KB) per posar dins d'un .BAT de MS-DOS 3.20 (funciona
+des del DOS 2.0). Mostra un missatge, fa un compte enrere de segons i
+deixa continuar el .BAT. Si es vol, una tecla atura l'espera.
+
+Fitxers
+-------
+  WAIT.COM   el programa
+  WAIT.ASM   codi font (NASM)
+  WAIT.TXT   aquest fitxer
+
+Instal˙laci¢
+------------
+Copieu WAIT.COM a un directori del PATH (per exemple C:\DOS).
+
+Sintaxi
+-------
+  WAIT [segons] ["missatge"] [/K]
+
+  segons      1 a 3600 (per defecte 10)
+  "missatge"  el text que es mostra. On hi poseu # hi surt el compte
+              enrere; si no hi ha cap #, surt al final del missatge.
+              "" (buit) = nomÇs el n£mero.
+  /K          una tecla atura l'espera (sense /K les tecles s'ignoren)
+  /?          ajuda
+
+Sense missatge:      Esperant 10 s...
+Sense missatge i /K: Premeu una tecla per continuar (10 s)...
+
+ERRORLEVEL en acabar:
+  0  s'ha esgotat el temps
+  1  s'ha premut una tecla (nomÇs amb /K)
+  2  parÖmetre incorrecte
+
+Exemples per a .BAT
+-------------------
+  WAIT 3
+  WAIT 5 "Esperant que s'aturi el disc: # s"
+
+  WAIT 10 "Arrencant el GEM en # s (una tecla = quedar-se al DOS)" /K
+  IF ERRORLEVEL 1 GOTO DOS
+  GEM
+  :DOS
+(Al DOS 3.20 no hi ha CALL: un .BAT que en crida un altre no hi torna.)
+
+Recordeu que IF ERRORLEVEL 1 vol dir "1 o mÇs": comproveu els valors
+de mÇs gran a mÇs petit.
+
+Detalls
+-------
+- NomÇs es reescriuen els d°gits del compte enrere, a la mateixa posici¢
+  de la pantalla; la resta del missatge no es torna a escriure. El n£mero
+  queda alineat a la dreta (10, " 9", " 8"...) perquä no quedin restes.
+- El temps es compta amb el rellotge de la BIOS (18,2 tics per segon),
+  no amb la velocitat de la CPU. Amb el fast forward de 86Box el
+  rellotge emulat tambÇ corre mÇs, i l'espera dura menys en temps real.
+- Les tecles premudes abans de comenáar no compten. Sense /K, les tecles
+  premudes durant l'espera es descarten (no arriben a l'ordre segÅent).
+- Ctrl+C i Ctrl+Pausa funcionen com sempre: el DOS pregunta si voleu
+  acabar el .BAT.
+- Feu servir un missatge que cÖpiga en una l°nia: si passa de l°nia a
+  la part de baix de la pantalla, el n£mero podria quedar desplaáat.
+- Al DOS 3.20, els signes % del missatge s'han d'escriure %% dins d'un
+  .BAT, com sempre.
+
+Historial de canvis
+-------------------
+0.1  20-11-2026  Primera versi¢.
+
+Assemblar
+---------
+  NASM -f bin WAIT.ASM -o WAIT.COM

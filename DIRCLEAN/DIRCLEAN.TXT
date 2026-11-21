@@ -1,0 +1,43 @@
+DIRCLEAN 1.1 - Neteja de directoris (FAT12/FAT16), MS-DOS 3.2 a 6.22
+====================================================================
+
+QuŠ fa
+------
+Revisa tots els directoris d'una unitat llegint-los directament del
+disc i hi busca:
+- Entrades de nom llarg (VFAT/LFN, atribut 0Fh) •rfenes.
+- Brossa de macOS: .fseventsd, .Spotlight-V100, .Trashes, ._*,
+  .DS_Store, .TemporaryItems... (amb les seves entrades LFN).
+- Entrades inv…lides: nom amb car…cters prohibits, cl£ster inicial fora
+  de rang, cadena de cl£sters trencada, en bucle o encreuada, mida m‚s
+  gran que la cadena.
+Per a cada problema pregunta si se n'ha d'esborrar l'entrada.
+
+és
+--
+   DIRCLEAN [unitat:] [/N]
+      /N   nom‚s informe: no modifica res
+
+Com esborra
+-----------
+1) Marca l'entrada (i les seves LFN) com a esborrada (E5h).
+2) Despr‚s allibera els cl£sters a la FAT (a totes les c•pies), nom‚s
+   si la cadena era v…lida i no compartida. Un directori s'esborra amb
+   tot el seu contingut.
+Si s'interromp entre 1 i 2, nom‚s queden cl£sters perduts (CHKDSK /F).
+
+Coses a saber
+-------------
+- Funciona amb MS-DOS 3.2, 3.3, 4.x, 5.x i 6.x. A partir del DOS
+  3.31/4.0 fa servir la crida INT 25h/26h ampliada, per a particions
+  de m‚s de 32 MB (FAT16 fins a 2 GB).
+- No toca unitats comprimides (DoubleSpace/DriveSpace), SUBST ni de
+  xarxa.
+- étil per als disquets i les imatges que han passat per un Mac.
+- Fes primer DIRCLEAN /N per veure quŠ trobaria.
+
+Muntatge: nasm -f bin DIRCLEAN.ASM -o DIRCLEAN.COM
+
+Historial
+---------
+1.1  Versi¢ publicada.

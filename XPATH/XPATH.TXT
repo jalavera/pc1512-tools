@@ -1,0 +1,189 @@
+XPATH per a MS-DOS 3.x-6.x                                   versi¢ 0.7
+
+QuŠ ‚s
+------
+XPATH canvia el PATH (i, amb /S, qualsevol variable) a l'entorn del
+COMMAND.COM principal, el que s'engega amb SHELL= ... /P. Aix¡ el canvi
+es mant‚ encara que es faci des d'un COMMAND /C o des d'un programa, i
+s'hi pot fer servir %PATH% tamb‚ a la l¡nia d'ordres. Comprova cada
+cam¡ que posa (si existeix, si est… repetit, si ‚s v…lid) i avisa.
+
+Per quŠ cal
+-----------
+- Cada programa (i cada COMMAND /C) rep una c•pia de l'entorn del seu
+  pare. Si canvia la seva c•pia, el pare no se n'assabenta. L'MS-DOS
+  3.20 no t‚ CALL: per executar un .BAT dins d'un altre cal
+  COMMAND /C ALTRE.BAT, i un PATH o un SET fet all… es perd en tornar.
+- %PATH% (i qualsevol %VARIABLE%) ja s'expandeix dins dels fitxers .BAT
+  a l'MS-DOS 3.20: PATH %PATH%;C:\UTIL funciona en un .BAT. A la l¡nia
+  d'ordres no (tampoc no ho fan l'MS-DOS 5 i 6). XPATH ho expandeix
+  ell mateix, de manera que XPATH %PATH%;C:\UTIL va b‚ arreu.
+
+Contingut del disquet
+---------------------
+XPATH.COM    el programa (6,3 KB, no queda resident)
+XPATH.TXT    aquest fitxer
+XPATH.ASM    el codi font: nasm -f bin XPATH.ASM -o XPATH.COM
+
+Instalúlaci¢
+------------
+Copia XPATH.COM a un directori del PATH (p. ex. C:\UTILS).
+L'entorn del COMMAND.COM de l'MS-DOS 3.20 fa 160 bytes si no dius res.
+Si hi vols posar camins llargs, fes-lo m‚s gran amb /E:bytes:
+  SHELL=C:\COMMAND.COM C:\ /P /E:512
+o, si fas servir LOADHI com a SHELL=, a la l¡nia del COMMAND.COM del
+LOADHI.CFG:
+  C:\COMMAND.COM C:\ /P /E:512
+(Amb HIDOS, l'entorn ‚s a la mem•ria superior: no gasta mem•ria
+convencional.)
+
+és
+--
+  XPATH                   mostra el PATH
+  XPATH C:\DOS;C:\UTIL    posa el PATH
+  XPATH %PATH%;C:\UTIL    afegeix C:\UTIL al PATH que hi ha
+  XPATH +C:\UTIL          l'afegeix al final, nom‚s si no hi ‚s
+  XPATH -C:\UTIL          el treu (si hi ‚s)
+  XPATH +C:\BASIC2 -C:\ /V1
+                          diversos + i -, en ordre, d'un sol cop
+  XPATH ;                 treu el PATH
+  XPATH /LOAD:CAMINS.TXT  posa el PATH amb els camins d'un fitxer
+                          (/F:CAMINS.TXT tamb‚ val)
+  XPATH /SAVE:CAMINS.TXT  desa el PATH en un fitxer, un cam¡ per l¡nia,
+                          sense "PATH=" (el sobreescriu si ja hi ‚s)
+  XPATH /S                llista l'entorn del COMMAND.COM principal
+  XPATH /S NOM=valor      posa una variable (amb %VAR% expandit)
+  XPATH /S NOM=           la treu
+  XPATH /?                ajuda
+  /V0 /V1 /V2 /V3         quins missatges (es pot posar a qualsevol
+                          lloc de la l¡nia):
+                            /V0 res
+                            /V1 nom‚s quŠ ha fet ("Afegit al PATH:
+                                C:\UTIL.", "Tret del PATH: ...",
+                                "PATH posat: 3 camins.", "C:\UTIL ja
+                                ‚s al PATH: no canvio res."...) o, si
+                                no ha pogut, una l¡nia: "XPATH: no
+                                s'ha pogut afegir C:\UTIL al PATH."
+                            /V2 el mateix i, a m‚s, els avisos (cam¡
+                                que no existeix, repetit, incomplet,
+                                PATH massa llarg, poc espai a
+                                l'entorn...)
+                            /V3 el mateix, el PATH final i, si hi ha
+                                un error, l'explicaci¢ sencera (per
+                                quŠ no s'ha pogut i quŠ cal fer, p.
+                                ex. quin /E: posar). Per defecte.
+                          Una ordre mal escrita: /V3 l'ajuda, /V1 i /V2
+                          una l¡nia, /V0 res.
+XPATH sol, XPATH /S i XPATH /? sempre escriuen: ‚s el que demanes.
+Maj£scules i min£scules: el PATH queda en maj£scules (com amb PATH);
+amb /S, el nom en maj£scules i el valor tal com l'escrius. C:\UTIL i
+c:\util\ s¢n el mateix cam¡.
+
+El fitxer de /LOAD:
+  # Camins del PC1512
+  C:\DOS
+  C:\UTILS
+  C:\GEM;C:\WP
+  %ALTRES%
+Un cam¡ per l¡nia (o diversos separats per ;); les l¡nies buides i les
+que comencen per # no compten; %VAR% s'expandeix. M…xim 4 KB.
+Un "PATH=" al principi (en maj£scules o min£scules, amb espais o
+sense) no compta: es pot carregar el fitxer que fa PATH > PATH.TXT.
+Tamb‚ val a la l¡nia d'ordres: XPATH PATH=C:\DOS;C:\UTIL.
+XPATH /SAVE: escriu el mateix format que llegeix /LOAD:, de manera que
+  XPATH /SAVE:PATH.TXT     (i m‚s tard)     XPATH /LOAD:PATH.TXT
+torna a deixar el PATH com era.
+
+Comprovacions (a cada cam¡, tant si ve de la l¡nia com del fitxer)
+-------------------------------------------------------------------
+Error o av¡s                              quŠ fa
+-----------------------------------------  ---------------------------
+car…cters no v…lids (espai * ? + , ; ...) no el posa
+m‚s de 63 car…cters                        no el posa
+repetit                                    el posa un sol cop
+incomplet (sense X:\ al principi)          el posa (depŠn d'on siguis)
+no existeix                                el posa (potser el crear…s)
+unitat inexistent o no a punt              el posa
++cam¡ que ja hi ‚s / -cam¡ que no hi ‚s    no canvia res (ERRORLEVEL 2)
+PATH de m‚s de 122 car…cters               el posa (l'ordre PATH no
+                                            el podria tornar a escriure)
+no hi cap a l'entorn                       no canvia res (ERRORLEVEL 1)
+                                            i proposa un /E:
+hi cap per• queden menys de 64 bytes       el posa i proposa un /E:
+Per saber si un cam¡ existeix, XPATH hi fa un CHDIR i torna on era. Si
+la unitat ‚s una disquetera sense disquet no pregunta "Anular,
+Reintentar...": diu que no est… a punt.
+ERRORLEVEL: 0 fet, 1 error (sintaxi, fitxer, sense espai o no troba
+l'entorn), 2 no calia fer res.
+
+On escriu
+---------
+- A l'entorn del COMMAND.COM principal: el que t‚ l'INT 2Eh (un
+  COMMAND /C no la toca). El COMMAND.COM de l'MS-DOS 3.20 no diu on t‚
+  l'entorn al PSP (PSP:2Ch ‚s 0); XPATH busca el bloc de mem•ria del
+  COMMAND.COM que t‚ COMSPEC=. A partir de l'MS-DOS 3.30 el COMMAND.COM
+  s¡ que el posa a PSP:2Ch, i XPATH fa servir aquest.
+- I tamb‚ a l'entorn del COMMAND.COM que l'executa, si ‚s un altre
+  (un COMMAND /C): aix¡ la resta del .BAT ja veu el canvi.
+
+MS-DOS 4, 5 i 6
+---------------
+Est… pensat per funcionar-hi (entorn a PSP:2Ch, mateixa cadena de
+blocs de mem•ria, INT 2Eh), per• nom‚s s'ha provat amb l'MS-DOS 3.20.
+Si a l'MS-DOS 5 o 6 fas servir DOS=UMB i el COMMAND.COM principal ‚s a
+la mem•ria superior, tamb‚ l'hauria de trobar si la mem•ria superior
+est… enlla‡ada (DOS=UMB ho fa). Si no troba l'entorn, ho diu i no toca
+res.
+
+Exemple
+-------
+  COMMAND /C EINES.BAT
+amb EINES.BAT:
+  XPATH +C:\EINES
+  XPATH /S EINES=C:\EINES
+En tornar, PATH i SET mostren C:\EINES (amb PATH i SET dins
+EINES.BAT es perdria).
+
+Diversos + i - en una ordre
+---------------------------
+  XPATH +C:\BASIC2 -C:\TEMP +C:\GEM /V1
+Es fan en ordre, sobre el PATH que va quedant, i s'escriu tot d'un
+cop a l'entorn. Un +cam¡ que ja hi ‚s o un -cam¡ que no hi ‚s no fan
+res i ho diu, per• la resta es fa. Si algun cam¡ no ‚s v…lid (p. ex.
+C:\A*B) o una paraula no comen‡a per + o -, no es fa res de res.
+ERRORLEVEL 2 nom‚s si cap no ha canviat res.
+
+Historial
+---------
+0.7  20-11-2026  Diversos +cam¡ i -cam¡ a la mateixa ordre (XPATH
+                 +C:\BASIC2 -C:\ /V1). Els missatges del que ha fet
+                 surten en l'ordre de les operacions.
+0.6  20-11-2026  Amb +cam¡ i -cam¡, neteja el PATH que hi havia: treu
+                 espais i car…cters invisibles (el FF de l'ALT+255) del
+                 principi i del final de cada cam¡, i els camins buits
+                 (;;). Abans, un PATH acabat en ALT+255 quedava com
+                 "C:\IOPATCH ;C:\BASIC2". Amb /V2 o /V3 avisa que ho
+                 ha netejat. Als camins de la l¡nia i de /LOAD: tamb‚
+                 es treu l'ALT+255 dels extrems.
+0.5  20-11-2026  Nivells de missatges nous: /V0 res; /V1 quŠ ha fet o
+                 que no ho ha pogut fer (sense avisos ni el PATH
+                 final); /V2 i els avisos; /V3 i el PATH final i els
+                 errors explicats. El missatge del que s'ha fet surt
+                 quan ja ‚s a l'entorn. /Vn val a qualsevol lloc.
+0.4  19-11-2026  /LOAD:fitxer (abans /F:, que tamb‚ val) i /SAVE:fitxer
+                 (un cam¡ per l¡nia). Un "PATH=" al principi d'una
+                 l¡nia o de la l¡nia d'ordres no compta (per carregar
+                 el que escriu PATH > fitxer).
+0.3  19-11-2026  XPATH sol deia "No hi ha PATH" encara que n'hi hagu‚s
+                 (no s'inicialitzava el nom). Opcions /V0-/V3 i /F:
+                 (camins d'un fitxer). Comprova cada cam¡: car…cters,
+                 llargada, repetits, incomplets, si existeix. Informa
+                 del que fa. Feta per a MS-DOS 3.x-6.x (a partir del
+                 3.30 fa servir PSP:2Ch).
+0.2  19-11-2026  Avisa si +cam¡ ja ‚s al PATH o -cam¡ no hi ‚s
+                 (ERRORLEVEL 2). Si no hi cap, diu la mida que caldria
+                 i la que hi ha i proposa un /E:. Avisa si queda poc
+                 espai o si el PATH passa de 122 car…cters.
+0.1  19-11-2026  Primera versi¢: PATH, +cam¡, -cam¡, %VAR% i /S per a
+                 qualsevol variable, a l'entorn del COMMAND.COM
+                 principal i al del COMMAND que l'executa.
