@@ -16,6 +16,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [IOPATCH6](IOPATCH6/) | 1.0 | Pedaç de l'IO.SYS del MS-DOS 6.22: memòria convencional fins a 736 KB; es desfà amb /U |
 | [HIDOS](HIDOS/) | 0.9 | Posa el nucli del MS-DOS 3.20 i les seves taules (FILES, BUFFERS, FCBS, unitats, DEVICEHIGH=) a la memòria superior; es desfà amb /U |
 | [XPATH](XPATH/) | 0.7 | PATH (i altres variables) a l'entorn del COMMAND.COM principal, amb %VAR%, comprovació dels camins i llistes desades |
+| [KEYBX](KEYBX/) | 2.3 | Remapejador de teclat resident (MS-DOS 2.x a 6.xx): aprèn quina tecla fa cada símbol quan l'emulador envia codis que no quadren amb el teclat; amb driver de ratolí del PC1512 (/M). Porta el KEYBX.CFG configurat |
 | [AMSMOUSE](AMSMOUSE/) | 0.3 | Controlador de ratolí mínim (INT 33h) per al ratolí de l'Amstrad PC1512 |
 | [ATTRIB](ATTRIB/) | 1.0 | ATTRIB per al MS-DOS 3.20 amb els atributs S i H, com el del MS-DOS 5 |
 | [SEARCH](SEARCH/) | 1.0 | Cerca un arxiu a totes les unitats i directoris, amb mida, data, atributs i CRC32 |
@@ -46,7 +47,7 @@ cd SOLITARI && sh BUILD.SH               (SOLITARI.APP; cal python3)
 cd VINTIU && sh BUILD.SH                 (VINTIU.APP; cal python3)
 nasm -f bin XPATH/XPATH.ASM -o XPATH.COM          (i igual WAIT, SEARCH,
                                                     DIRCLEAN, ATTRIB, ROWS25,
-                                                    AMSMOUSE, GEMPATCH)
+                                                    AMSMOUSE, GEMPATCH, KEYBX)
 ```
 
 Els programes de més d'un fitxer tenen un `BUILD.SH` a la seva carpeta,

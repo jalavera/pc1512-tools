@@ -1,0 +1,381 @@
+KEYBX 2.3 - Remapejador de teclat resident per a MS-DOS 2.x - 6.xx
+          amb driver de ratol° per a l'Amstrad PC1512 (/M)
+===================================================================
+
+[Fitxer en codepage 850]  Prova: ∑ ‘ ÷ ÿ „ ‡ È µ ê ∂ “
+Si a la l°nia de prova hi veus trossos de marc en lloc de maj£scules
+accentuades, la pantalla Çs en 437: llegeix KEYBX437.TXT.
+
+Per que serveix
+---------------
+Quan un emulador (86Box a Mac, Windows o Linux, o qualsevol altre) envia
+al PC emulat codis de tecla que no coincideixen amb el que hi ha impräs
+al teu teclat, cap KEYB xx ho pot arreglar. KEYBX aprän quina tecla
+f°sica (i amb quins modificadors) fa servir cada s°mbol i, un cop
+resident, posa al buffer del teclat el carÖcter correcte.
+
+Funciona a qualsevol 8086 o superior i no depän de l'emulador: la taula
+es genera dins el mateix PC emulat.
+
+Aquest text ve en dues versions: KEYBX.TXT (850) i KEYBX437.TXT (437).
+Llegeix la que correspon al joc de carÖcters de la pantalla (TYPE KEYBX.TXT
+| MORE); la l°nia de prova del comenáament et diu si l'has encertat.
+
+Passos
+------
+1. Arrenca SENSE carregar KEYB (o treu-lo de l'AUTOEXEC.BAT).
+2. KEYBX /A            Mode aprenentatge. Per a cada s°mbol, prem la
+                       tecla o combinaci¢ del teu teclat que el mostra
+                       (Maj, Opci¢/Alt, Maj+Opci¢...).
+                       Esc = salta aquest s°mbol, F10 = acaba i desa.
+                       Desa KEYBX.CFG al directori actual
+                       (o KEYBX /A nom.cfg).
+3. KEYBX               Instal˙la el resident amb KEYBX.CFG.
+4. KEYBX /T            Mode prova: per a cada tecla mostra el codi que
+                       rep el PC, els modificadors i el carÖcter final.
+                       Esc surt.
+
+A l'AUTOEXEC.BAT:   C:\UTIL\KEYBX C:\UTIL\KEYBX.CFG
+
+Codepage 850 al PC1512 de 86Box: la ROM de carÖcters 40078
+-----------------------------------------------------------
+En CGA els carÖcters del mode text surten d'una ROM, i MODE i
+DISPLAY.SYS no hi poden fer res. El fitxer 40078 d'aquest paquet Çs la
+ROM de carÖcters del PC1512 modificada: contÇ la codepage 850 i tambÇ
+la 437 original.
+
+Instal˙laci¢ (al Mac, Windows o Linux, amb 86Box tancat):
+
+1. Ves a la carpeta de ROMs de 86Box, a roms/machines/pc1512/
+2. Canvia el nom del fitxer 40078 que hi ve per defecte a 40078.437
+   (Çs l'original; guarda'l per si vols tornar enrere).
+3. Copia-hi el 40078 d'aquest paquet, amb aquest nom exacte i sense
+   extensi¢.
+
+Tria del joc de carÖcters, a cada mÖquina PC1512 de 86Box:
+
+   Pantalla > V°deo > Configurar
+
+   Angläs (EUA)   ->  la pantalla mostra la codepage 850
+   Danäs          ->  la pantalla mostra la codepage 437 original
+
+(El joc danäs autäntic ja no hi Çs: el seu lloc l'ocupa la 437.)
+
+ATENCI‡: el joc de carÖcters de la pantalla i KEYBX han d'anar
+sincronitzats. KEYBX no pot saber quin joc tÇ la pantalla.
+
+   Pantalla en Danäs (437)         KEYBX KEYBX.CFG
+   Pantalla en Angläs EUA (850)    KEYBX KEYBX.CFG /850
+
+Si no coincideixen, les maj£scules accentuades de les tecles mortes
+(∑ ‘ ÷ „ È...) sortiran com a trossos de marc, o no es podran fer.
+
+Comprovaci¢: a l'indicador del DOS, Alt+181 (teclat numäric) dona µ
+amb la 850 i un tros de marc amb la 437.
+
+Compte amb els programes fets per a la 437: amb la 850 hi canvien els
+marcs que barregen l°nia simple i doble, els mitjos blocs verticals,
+les lletres gregues i alguns s°mbols matemÖtics. Els marcs simples i
+dobles, els tramats i els blocs sencers no canvien.
+
+Codepage 850 a KEYBX
+--------------------
+Si la pantalla mostra la codepage 850 (ROM 40078 d'aquest paquet, o
+DISPLAY.SYS en EGA/VGA), instal˙la KEYBX amb /850:
+
+   KEYBX KEYBX.CFG /850
+
+Les tecles mortes fan llavors tambÇ les maj£scules accentuades de la
+850 (∑ ‘ ﬁ „ Î, µ ê ÷ ‡ È Ì, ∂ “ ◊ ‚ Í, é ” ÿ ô ö) i la Ï. Sense /850
+es fan servir les de la 437. El KEYBX.CFG Çs el mateix per a totes
+dues: els carÖcters que s'hi defineixen (§ á ß ¶ ® ≠...) tenen el
+mateix codi. /850 s'ha de posar cada vegada que es carrega o es
+recarrega la taula.
+
+En carregar-se, KEYBX diu quin joc ha agafat ("Codepage: 437",
+"Codepage: 850" o "Joc de carÖcters: GEM"), i el t°tol de la taula
+emergent tambÇ ho mostra.
+KEYBX no pot llegir quina font tÇ la pantalla: indica la que li has
+dit amb /850.
+
+GEM
+---
+El GEM no fa servir la ROM de carÖcters: porta les seves fonts i un joc
+de carÖcters propi, que no Çs ni la 437 ni la 850. Les min£scules
+accentuades, §, á, ß, ¶, ®, ≠ i ê é ô ö hi tenen el mateix codi, perï
+les altres maj£scules accentuades (∑ ‘ ÷ ÿ „ ‡ È...) en tenen un de
+diferent. Per aixï, dins del GEM, KEYBX ha de treballar amb /GEM.
+
+Amb KEYBX ja resident (carregat a l'AUTOEXEC.BAT, amb LH o sense), no
+cal desinstal˙lar-lo ni tornar a llegir el .CFG. Aquestes ordres nomÇs
+canvien el joc de les tecles mortes del resident:
+
+   KEYBX /GEM      joc del GEM
+   KEYBX /850      codepage 850
+   KEYBX /437      codepage 437
+
+El mÇs prÖctic Çs posar-ho al GEM.BAT, abans i desprÇs del GEM:
+
+   KEYBX /GEM
+   CD \GEMSYS
+   GEMVDI %1 %2
+   KEYBX /850           (o KEYBX /437 si la pantalla Çs en 437)
+
+No gasten mÇs memïria i no cal LH: el resident es queda on era.
+Mentre el joc Çs el del GEM, la taula emergent queda desactivada
+(Ctrl+Alt+T fa un xiulet), perquä els seus carÖcters no coincidirien
+amb els de la pantalla de text ni es pot dibuixar dins del GEM.
+
+El GEM 2.0 de l'Amstrad PC1512 nomÇs porta dibuixades, de maj£scules
+accentuades, ∑ ê é ô ö • Ä. El fitxer AMSTRAD.SYS d'aquest paquet Çs
+el controlador de pantalla del GEM amb la font del sistema ampliada:
+hi afegeix µ ∂ ‘ “ ” ﬁ ÷ ◊ ÿ „ ‡ ‚ Î È Í als codis que els dona el joc
+de carÖcters del GEM, que s¢n els que envia KEYBX /GEM. Instal˙laci¢:
+
+   CD \GEMSYS
+   REN AMSTRAD.SYS AMSTRAD.ORI
+   COPY A:AMSTRAD.SYS
+
+NomÇs canvia la font gran (8x8) del sistema, la dels men£s, finestres
+i del BASIC2. La font petita dels noms de les icones no s'ha tocat.
+
+Taula de carÖcters emergent
+---------------------------
+Per als s°mbols que el teclat no pot donar (o que l'emulador no envia):
+
+   Ctrl+Alt+T   obre la taula amb tots els carÖcters (32-255, CP437).
+
+   Fletxes, Inici, Fi, RePÖg, AvPÖg   mouen la selecci¢; a sota es veu
+                el carÖcter i el seu codi ASCII en decimal i hexadecimal.
+   Intro        afegeix el carÖcter seleccionat a la cadena.
+   una tecla    afegeix aquell carÖcter directament (i hi situa la
+                selecci¢).
+   RetrocÇs     esborra l'£ltim carÖcter de la cadena.
+   F10          tanca i escriu la cadena on hi havia el cursor
+                (tambÇ Ctrl+Intro). MÖxim 38 carÖcters.
+   Esc          tanca sense escriure res.
+
+La taula s'obre quan el programa actiu demana una tecla (a l'indicador
+del DOS, en un editor...), i nomÇs en mode de text de 80 columnes; en
+mode grÖfic (GEM) fa un xiulet i no s'obre. La cadena s'entrega com si
+l'haguessis teclejat, aix° que funciona amb qualsevol programa que
+llegeixi el teclat per la BIOS o pel DOS.
+
+En carregar-se, i cada vegada que se li canvia alguna cosa, KEYBX diu
+com queda la taula:
+
+   Taula de carÖcters emergent: Ctrl+Alt+codi 14.
+   Taula de carÖcters emergent: desactivada.
+
+"Desactivada" surt sempre que no es pot obrir: amb /P:0, amb el joc
+del GEM (/GEM) i amb KEYBX /OFF.
+
+KEYBX /P:xx  canvia la tecla: Ctrl+Alt+codi xx (hex). /P:14 = T (per
+             defecte), /P:19 = P. Es pot posar en instal˙lar o amb
+             KEYBX ja resident.
+
+La taula Çs un mïdul a part, en el seu propi bloc de memïria (com el
+ratol°): es carrega i es treu amb KEYBX ja resident, sense /U.
+
+   KEYBX KEYBX.CFG /P:0    instal˙la KEYBX sense la taula
+   KEYBX /P                KEYBX ja resident: carrega la taula
+                           (amb la tecla que tenia; Ctrl+Alt+T si no)
+   KEYBX /P:xx             la carrega (si no hi era) amb la tecla xx
+   KEYBX /P-  o  /P:0      treu la taula i n'allibera la memïria
+
+Va al mateix tipus de memïria que KEYBX, igual que el ratol° (vegeu
+"On va el ratol°" mÇs avall); MEM la mostra com un bloc de KEYBX amb el
+nom KEYBXP. /OFF la desactiva perï no l'allibera.
+
+Memïria convencional (amb el PSP i els MCB):
+   nomÇs teclat               uns 2,2 KB
+   teclat + taula             uns 5,7 KB   (la taula: 3,5 KB)
+   teclat + ratol°            uns 4,3 KB   (el ratol°: 2,1 KB)
+   teclat + taula + ratol°    uns 7,8 KB
+
+Ratol° del PC1512 (/M)
+----------------------
+KEYBX porta un driver de ratol° per a l'Amstrad PC1512, compatible amb
+el de Microsoft (INT 33h). Va en un bloc de memïria a part: es pot
+carregar i treure quan vulguis, sense tocar el teclat.
+
+   KEYBX KEYBX.CFG /M      instal˙la KEYBX amb el ratol°
+   KEYBX /M                KEYBX ja resident: hi afegeix el ratol°
+   KEYBX /M-               treu el ratol° i n'allibera la memïria
+   KEYBX /M:n              acceleraci¢ n = 0, 1, 2 o 3 (per defecte 2);
+                           amb el ratol° ja carregat, la canvia en calent
+
+On va el ratol°: al mateix tipus de memïria que KEYBX.
+   KEYBX a memïria convencional   ->  bloc al capdamunt de la memïria
+                                      convencional (no deixa forats)
+   KEYBX a dalt amb LOADHI o LH   ->  bloc lliure de la memïria alta
+                                      de la cadena del DOS
+   KEYBX a dalt amb /H:seg        ->  just darrere de KEYBX, sense bloc
+                                      (comprova RAM i zona buida; /F)
+   KEYBX /M /H:seg                ->  el ratol° al segment que diguis
+   (KEYBX /P /H:seg, el mateix per a la taula; amb /P /M /H:seg alhora
+   la taula va al segment i el ratol° just darrere)
+Si hi ha taula i ratol° a /H, cadascun salta el lloc de l'altre.
+MEM el mostra com un altre bloc de KEYBX (nom KEYBXM a l'MCB).
+
+Memïria del ratol°: uns 2,1 KB (2.080 bytes + 16 de l'MCB).
+
+Acceleraci¢ (/M:n): com mÇs mickeys en un tic (1/18 s), mÇs corre.
+               0-3     4-7     8-15    16 o mÇs
+   /M:0        x1      x1      x1      x1       (sense)
+   /M:1        x1      x1,25   x1,5    x2       (suau)
+   /M:2        x1      x1,5    x2      x3       (per defecte)
+   /M:3        x1      x2      x3      x4       (forta)
+Els moviments lents no s'acceleren mai: la precisi¢ es mantÇ. A 86Box al
+Mac, el macOS ja accelera el ratol°: si et va massa de pressa, prova
+/M:1 o /M:0. Els mickeys que reben els programes (funci¢ 0Bh) s¢n
+sempre els reals.
+
+* El cursor es mou llegint els comptadors del PC1512 (ports 78h i 7Ah)
+  a cada tic del rellotge (18,2 vegades per segon).
+* Els botons arriben pel teclat (codis 7Eh i 7Dh). KEYBX els passa al
+  driver abans de fer res mÇs, tambÇ amb KEYBX /OFF, i no arriben mai
+  al programa com a tecles. Sense ratol°, passen intactes a la BIOS.
+* El cursor surt amagat fins que el programa el demana. Cursor de text
+  als modes 0-3 i 7 i cursor grÖfic de 16x16 als modes CGA 4, 5 i 6.
+  NomÇs es redibuixa quan canvia de cel˙la o de p°xel.
+* Funcions INT 33h: 00h-0Ch, 0Fh, 10h, 14h-17h, 1Ah, 1Bh, 1Dh-21h,
+  23h i 24h (diu versi¢ 6.26, ratol° de bus).
+* KEYBX /ON i /OFF nomÇs afecten el teclat; el ratol° continua.
+* /M- (i /U) nomÇs funcionen si KEYBX Çs l'£ltim que ha capturat la
+  INT 08h i la INT 33h. Si ja hi ha un altre driver de ratol°, /M s'hi
+  nega.
+* GEM: sota MS-DOS, el GEM del PC1512 no porta driver de ratol° propi.
+  El seu controlador de pantalla (AMSTRAD.SYS) fa servir la INT 33h
+  (funcions 0, 4, 7, 8, 0Ch i 0Fh) i, si no troba cap driver, s'engega
+  sense ratol°. KEYBX /M li serveix i substitueix el MOUSE.COM
+  d'Amstrad. Sota DOS Plus no cal /M: el DOS Plus ja porta el driver
+  integrat (i /M s'hi nega). Per entrar al GEM amb ratol°:
+     KEYBX /GEM
+     KEYBX /M          (si no hi era)
+     CD \GEMSYS
+     GEMVDI %1 %2
+     KEYBX /M-         (si el vols treure en sortir)
+     KEYBX /850
+* Moviment vertical lent? ês la relaci¢ estÖndard de Microsoft (8
+  mickeys per 8 punts en horitzontal i 16 en vertical); els programes
+  la poden canviar amb la funci¢ 0Fh (el GEM ho fa).
+* Limitacions: sense cursor de text per maquinari; el mode de 16 colors
+  del PC1512 es tracta com el mode 6; la funci¢ 10h amaga el cursor
+  sense mirar la zona.
+
+Altres ordres
+-------------
+KEYBX fitxer.cfg   Si ja Çs resident, nomÇs en recarrega la taula.
+KEYBX /OFF, /ON    Desactiva o reactiva el resident (p. ex. per a un
+                   programa que fa servir Alt+xifres).
+KEYBX /U           Desinstal˙la (KEYBX ha de ser l'£ltim programa que
+                   s'ha enganxat a la INT 9; amb la taula, a la INT
+                   16h; amb el ratol°, a la INT 08h i a la INT 33h).
+                   Treu tambÇ la taula i el ratol°.
+KEYBX /H:seg       Amb KEYBX ja resident: el mou a memïria alta (vegeu
+                   mÇs avall).
+KEYBX              Sense parÖmetres i ja resident: en mostra l'estat.
+
+Memïria superior (768 KB - 1 MB)
+--------------------------------
+* MS-DOS 3.x - 4.x: amb LOADHI (zona alta creada al CONFIG.SYS):
+      LOADHI KEYBX KEYBX.CFG
+* MS-DOS 5/6 amb un gestor d'UMB (per exemple USE!UMBS.SYS en un 8086):
+      LH KEYBX KEYBX.CFG
+  En tots dos casos KEYBX diu "Instal˙lat a memïria superior, segment
+  xxxx": ho sap perquä ell mateix Çs per sobre de la memïria
+  convencional. MEM el mostra amb nom i mida a "Memoria superior".
+* /H:seg, nomÇs quan no hi ha cap d'aquestes dues eines:
+      KEYBX KEYBX.CFG /H:D000
+  - MS-DOS 2.x (LOADHI demana DOS 3 o posterior);
+  - DOS Plus i altres DOS on LOADHI no funciona;
+  - quan no pots tocar el CONFIG.SYS (p. ex. un disquet d'arrencada
+    d'un altre) i vols igualment el KEYBX a dalt.
+  KEYBX es copia a D000:0000 (2,0 KB; la taula, 3,5 KB, i el ratol°,
+  2,0 KB, van just darrere) i allibera
+  la memïria convencional. Abans comprova que el segment Çs per sobre de la
+  memïria convencional, que hi ha RAM i que la zona Çs buida (tot 00 o
+  FF). /F evita la comprovaci¢ de zona buida: cal desprÇs d'un reinici
+  en calent (Ctrl+Alt+Supr), perquä a dalt hi queda el KEYBX d'abans.
+  Com que no fa cap bloc de memïria, DOS no en sap res: MEM el mostra a
+  part, com a codi resident sense bloc, amb una mida aproximada.
+  No facis servir /H en una zona que ja gestioni el DOS 5/6 o LOADHI.
+* KEYBX /H:seg amb KEYBX ja resident (sense /P ni /M): el mou a dalt
+  sense descarregar-lo, amb les mateixes comprovacions (/F si cal).
+  Com que nomÇs la INT 09h apunta al nucli, n'hi ha prou amb copiar-lo,
+  repuntar-la i alliberar el lloc vell. Els mïduls (taula, ratol°) es
+  queden on s¢n; per pujar-los tambÇ:  KEYBX /P-  KEYBX /P  i
+  KEYBX /M-  KEYBX /M  (ara aniran just darrere de KEYBX).
+  No es pot fer al revÇs (de dalt a la memïria convencional).
+
+Format de KEYBX.CFG
+-------------------
+   ; comentari
+   codi  mods = valor   ; comentari
+
+   codi  : codi de tecla (scancode) en hexadecimal, 01-7F
+   mods  : N (cap), S (Maj), C (Ctrl), A (Alt), SA (Maj+Alt)
+   valor : 2 xifres hex  = carÖcter (CP437), es mantÇ el codi de tecla
+           4 xifres hex  = paraula sencera codi:carÖcter
+           'c'           = carÖcter literal
+           AGUT GREU CIRC DIER = tecla morta (' ` ^ ")
+           NUL           = la tecla no fa res
+
+   Exemple:   27 N  = A4   ; §
+              27 S  = A5   ; •
+              28 N  = AGUT
+
+Si una tecla tÇ definit un carÖcter sense modificador i el seu maj£scul
+amb Maj (a-z, §/•, á/Ä...), Bloq Maj hi actua automÖticament.
+
+Tecles mortes: ' ` ^ " seguides d'una vocal fan Ö ä Ç ° ï ¢ £ ã Å...
+(CP437). Si la combinaci¢ no existeix a CP437 surt l'accent i la
+lletra. Accent + espai = l'accent sol.
+
+Detalls täcnics
+---------------
+* Intercepta la INT 09h, llegeix el port 60h abans que la BIOS, crida
+  el gestor anterior i desprÇs substitueix o afegeix la paraula al
+  buffer de la BIOS. No toca el port 61h ni el controlador
+  d'interrupcions: ho fa la BIOS (compatible amb XT, AT i PC1512).
+* No remapeja mai Ctrl+Alt (Ctrl+Alt+Supr), ni les tecles amb prefix E0,
+  ni els alliberaments. Els codis que no s¢n a la taula passen intactes.
+  Els botons del ratol° del PC1512 (7Eh, 7Dh, FEh, FDh) tambÇ passen a
+  la BIOS, excepte amb /M, que se'ls queda el driver de ratol°.
+* El driver de ratol° Çs un mïdul amb segment propi, copiat a un bloc
+  a part; KEYBX hi salta amb una crida llunyana des de la INT 09h.
+* La taula emergent Çs un mïdul amb segment propi en un bloc a part;
+  llegeix les dades del nucli (popflag, cp850) amb un segment guardat.
+  Intercepta tambÇ la INT 16h: s'obre des d'allÖ (mai
+  dins la interrupci¢ de teclat) i escriu directament a la memïria de
+  v°deo (B800h o B000h), desant i restaurant la zona que tapa.
+* NomÇs fa servir funcions del DOS 2.0 i instruccions 8086.
+* Muntatge: nasm -f bin KEYBX.ASM -o KEYBX.COM
+
+
+Historial
+---------
+2.3  20-11-2026  Correcci¢: amb LOADHI (o LH), la taula i el ratol° no
+                 trobaven lloc a dalt, perquä LOADHI dona al programa
+                 tot el bloc lliure mÇs gran. Ara KEYBX s'encongeix i
+                 posa els mïduls al capdamunt d'aquest bloc.
+2.2  20-11-2026  La taula emergent tambÇ va en un bloc a part: KEYBX /P
+                 la carrega, KEYBX /P- (o /P:0) la treu, sense /U.
+                 KEYBX /H:seg amb KEYBX ja resident el mou a memïria
+                 alta. Ja no cal descarregar KEYBX per canviar res.
+                 Signatura nova: descarrega la 2.1 amb el KEYBX 2.1 /U.
+2.1  20-11-2026  Ratol° en un bloc a part: KEYBX /M l'afegeix amb KEYBX
+                 ja resident i KEYBX /M- el treu i allibera la memïria.
+                 Va al mateix tipus de memïria que KEYBX. Corba
+                 d'acceleraci¢ /M:0-3 (es pot canviar en calent).
+                 /P:0 amb KEYBX ja sense taula ja no dona l'av°s.
+                 Signatura nova: descarrega la 2.0 amb el KEYBX 2.0 /U.
+2.0  19-11-2026  Driver de ratol° del PC1512 integrat (/M), opcional:
+                 sense /M no queda resident. La signatura del resident
+                 canvia: si tens la 1.9 carregada, descarrega-la amb
+                 el KEYBX 1.9 /U abans d'instal˙lar la 2.0.
+1.9  13-11-2026  En instal˙lar-se diu si Çs a memïria superior (carregat
+                 amb LOADHI o LH) en lloc de "memïria convencional".
+                 Documentaci¢: KEYBX.TXT i KEYBX437.TXT.
+1.8              Taula de carÖcters emergent, tecles mortes 437/850.
