@@ -23,6 +23,8 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [WAIT](WAIT/) | 0.1 | Espera amb compte enrere per als .BAT, aturable amb una tecla |
 | [ROWS25](ROWS25/) | 0.1 | Posa a la BIOS del PC1512 el nombre de files de la pantalla (perquè MEM /P i altres parin a cada pantalla) |
 | [GEMPATCH](GEMPATCH/) | 0.1 | Canvia els temps de doble clic del GEM (GEM.EXE), per a l'avançament ràpid de 86Box |
+| [SOLITARI](SOLITARI/) | 0.1 | Joc del GEM 2.0: solitari Klondike, tot amb el ratolí (`SOLITARI.APP`) |
+| [VINTIU](VINTIU/) | 0.1 | Joc del GEM 2.0: el Vint-i-u Enhanced del VIC-20, amb cartes dibuixades, ratolí i so (`VINTIU.APP`) |
 
 ## Descàrrega
 
@@ -40,6 +42,8 @@ nasm -f bin EINES/EINES.ASM -o EINES.ACC         (accessori del GEM)
 nasm -f bin IOPATCH6/IOPATCH6.ASM -o IOPATCH6.COM
 cd IOPATCH && sh BUILD.SH                (IOPATCH.COM i IOCONFIG.COM)
 cd HIDOS && sh BUILD.SH                  (HIDOS.COM)
+cd SOLITARI && sh BUILD.SH               (SOLITARI.APP; cal python3)
+cd VINTIU && sh BUILD.SH                 (VINTIU.APP; cal python3)
 nasm -f bin XPATH/XPATH.ASM -o XPATH.COM          (i igual WAIT, SEARCH,
                                                     DIRCLEAN, ATTRIB, ROWS25,
                                                     AMSMOUSE, GEMPATCH)

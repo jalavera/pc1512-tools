@@ -1,0 +1,39 @@
+SOLITARI per al GEM 2.0 (Amstrad PC1512)                     versi¢ 0.1
+=======================================================================
+
+Solitari Klondike per al GEM Desktop 2.0 de l'Amstrad PC1512, escrit en
+assemblador 8086. Es juga tot amb el ratol¡.
+
+INSTALúLACIà
+------------
+Copia SOLITARI.APP a C:\GEMAPPS. Per obrir-lo:
+  - des del GEM: doble clic a SOLITARI.APP;
+  - des de DOS:  GEM SOLITARI   (en sortir es torna a DOS).
+
+COM ES JUGA
+-----------
+  - Clic al munt per robar cartes.
+  - Arrossega una carta, o una escala de cartes, fins on vulguis.
+  - Un clic en una carta l'envia a les piles de dalt si hi pot anar.
+  - Men£s: Solitari (Quant a), Partida (Nova, Desfer, Sortir),
+    Opcions (robar 1 o 3 cartes, puntuaci¢ est…ndard / Vegas / cap, so)
+    i Ajuda.
+  - Els punts i el temps surten al t¡tol de la finestra.
+
+REQUISITS
+---------
+GEM Desktop 2.0 i una pantalla de 640x200. Amb el controlador de 16
+colors del PC1512 les cartes arrossegades van directament a la mem•ria
+de v¡deo i es mouen r…pid; amb altres pantalles es veu nom‚s el contorn.
+
+COMPILAR
+--------
+Cal nasm i python3:  python3 build.py SOLITARI.ASM SOLITARI.APP
+(o sh compila_solitari.sh / sh BUILD.SH). build.py hi posa la cap‡alera
+EXE; exe.inc i SOLITARI.INC (imatges de les cartes) han de ser a la
+mateixa carpeta.
+
+HISTORIAL
+---------
+0.1   Primera versi¢ publicada. Les figures de les cartes s¢n les del
+      Vint-i-u Enhanced.

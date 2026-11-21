@@ -1,0 +1,39 @@
+VINTIU - Vint-i-u Enhanced per al GEM 2.0 (Amstrad PC1512)   versi¢ 0.1
+=======================================================================
+
+Versi¢ per al GEM Desktop 2.0 del joc Vint-i-u Enhanced del VIC-20
+(veintiuna_enhanced v5), escrita en assemblador 8086. T‚ les mateixes
+regles, missatges i temps que l'original, i hi afegeix cartes dibuixades,
+ratol¡, so per l'altaveu i animacions de remenar i repartir.
+Les instruccions completes s¢n a VINTIU.PDF.
+
+INSTALúLACIà
+------------
+Copia VINTIU.APP a C:\GEMAPPS. Per obrir-lo:
+  - des del GEM: doble clic a VINTIU.APP;
+  - des de DOS:  GEM VINTIU   (en sortir es torna a DOS).
+
+COM ES JUGA
+-----------
+Cal acostar-se tant com es pugui a 21 sense passar-se i fer m‚s punts que
+la banca. Es comen‡a amb 100 fitxes.
+  D  Doblar      (abans de demanar cap carta, si hi ha prou fitxes)
+  C  Carta       (sempre)
+  P  Plantar-se  (amb 16 punts o m‚s)
+Les tres opcions tamb‚ es poden clicar amb el ratol¡. L'aposta s'escriu
+amb les xifres i Retorn. El bot¢ de tancar de la finestra surt del joc.
+
+REQUISITS
+---------
+GEM Desktop 2.0 i una pantalla de 640x200 (la de 16 colors del PC1512 ‚s
+la recomanada). Ratol¡ opcional: es pot jugar nom‚s amb el teclat.
+
+COMPILAR
+--------
+Cal nasm i python3:  python3 build.py VINTIU.ASM VINTIU.APP
+(o sh compila_vintiu.sh / sh BUILD.SH). exe.inc i VINTIU.INC han de ser
+a la mateixa carpeta.
+
+HISTORIAL
+---------
+0.1   Primera versi¢ publicada.
