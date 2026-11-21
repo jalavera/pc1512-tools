@@ -1,0 +1,64 @@
+DOSSHELL 0.2 - Shell de DOS per al GEM 2.0 (Amstrad PC1512)
+============================================================
+
+Quä fa
+------
+ês un accessori d'escriptori: surt al men£ d'accessoris (el primer
+men£) de qualsevol aplicaci¢ GEM, no nomÇs a l'escriptori. Amb
+"Shell de DOS" la pantalla passa a mode text i s'obre COMMAND.COM.
+Quan escrius EXIT tornes al GEM, tal com l'havies deixat.
+
+Instal˙laci¢
+------------
+1. Copia DOSSHELL.ACC a la carpeta \GEMBOOT del disc del GEM.
+2. Torna a engegar el GEM.
+3. Al men£ d'accessoris hi ha d'haver "Shell de DOS".
+Si no surt, potser el GEM ja tÇ el mÖxim d'accessoris que carrega:
+canvia l'extensi¢ (per exemple a .ACX) d'un que no facis servir.
+
+Ès
+--
+- Tria "Shell de DOS" al men£ d'accessoris.
+- Fes el que vulguis al DOS. Per tornar: EXIT.
+- En tornar, el GEM redibuixa l'escriptori i les finestres.
+
+Fa servir el COMMAND.COM de la variable COMSPEC; si no n'hi ha,
+C:\COMMAND.COM.
+
+Coses a saber
+-------------
+- Cal memïria de DOS lliure (uns 28 KB). Mentre el GEM i una aplicaci¢
+  s¢n carregats potser no n'hi ha: llavors surt una alerta amb els KB
+  lliures i no passa res mÇs. Prova-ho primer des de l'escriptori i
+  desprÇs des d'una aplicaci¢ (BASIC2, etc.).
+- Mentre ets al DOS, el GEM estÖ aturat: no hi ha rellotge, ni
+  temporitzadors, ni accessoris.
+- No executis el GEM, ni programes residents (TSR), des d'aquesta
+  shell: el GEM continua a la memïria.
+- Si en tornar la barra de men£s no es veu bÇ, passa el ratol° per
+  sobre dels men£s; si continua malament, digues-ho.
+
+Com funciona (per als curiosos)
+-------------------------------
+wind_update i graf_mouse (amaga el ratol°), guarda la barra de men£s
+amb vro_cpyfm, v_enter_cur (VDI: mode text), EXEC de COMMAND.COM,
+v_exit_cur (mode grÖfic), torna a posar la barra de men£s i
+form_dial(FMD_FINISH) perquä el GEM redibuixi la resta.
+
+Fitxers
+-------
+DOSSHELL.ACC   l'accessori
+DOSSHELL.ASM   el codi font (nasm -f bin DOSSHELL.ASM -o DOSSHELL.ACC)
+DOSSHELL.TXT   aquest fitxer
+
+Historial
+---------
+0.2  20-11-2026  El GEM no el carregava i, a mÇs, deixava de carregar
+                 altres accessoris: el fitxer era massa gran (13 KB, per
+                 un buffer per a la barra de men£s) i demanava tota la
+                 memïria (capáalera MZ). Ara fa 3 KB, la barra de men£s
+                 es guarda en un bloc de DOS demanat en el moment i la
+                 capáalera demana nomÇs 512 bytes mÇs.
+0.1  20-11-2026  Primera versi¢. Provades al simulador nomÇs les parts
+                 sense GEM (COMSPEC, alerta); NO provat encara dins el
+                 GEM real.
