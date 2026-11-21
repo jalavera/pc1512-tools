@@ -1,0 +1,47 @@
+ROWS25 0.1 - Files de pantalla per a la BIOS del PC1512
+=======================================================
+
+QUE FA
+------
+Algunes utilitats del DOS (per exemple MEM /P de l'MS-DOS 6.22) miren a
+la zona de dades de la BIOS quantes files t‚ la pantalla (0040:0084) per
+saber on han de parar. La BIOS del PC1512, com les de l'Špoca del CGA,
+hi deixa un 0, i MEM /P no s'atura mai.
+ROWS25 hi posa 24 (files - 1) i, si tamb‚ ‚s 0, posa 8 (punts per
+car…cter) a 0040:0085. Si la BIOS ja hi t‚ valors (EGA, VGA), no toca
+res. Ocupa 39 bytes, no escriu res a la pantalla i no queda resident.
+
+INSTALúLACIO
+------------
+1. Copia ROWS25.COM al disc dur, p. ex.:  COPY A:ROWS25.COM C:\DOS
+2. Afegeix-lo a l'AUTOEXEC.BAT (sense LH: no queda resident):
+       C:\DOS\ROWS25
+El valor es perd en reiniciar; per aix• ha d'anar a l'AUTOEXEC.BAT.
+
+COMPROVACIO
+-----------
+    DEBUG
+    -D 40:84 L 2
+    -Q
+Ha de mostrar  18 08  (24 i 8). Despr‚s, MEM /D /P ha de parar a cada
+pantalla.
+
+FITXERS
+-------
+  ROWS25.COM   el programa
+  ROWS25.ASM   la font (NASM):  nasm -f bin ROWS25.ASM -o ROWS25.COM
+  ROWS25.TXT   aquest fitxer
+
+HISTORIA
+--------
+  0.1  11-11-2026  Primera versi¢.
+
+CONSELLS
+--------
+ - Funciona amb qualsevol DOS (2.x a 6.22) i qualsevol 8086 o superior.
+ - Si fas servir un mode de 40 columnes o un altre nombre de files, el
+   valor 24 continua sent el correcte: el PC1512 sempre t‚ 25 files en
+   mode text.
+ - Si algun programa encara no s'atura b‚, passa-li la sortida per MORE:
+       MEM /D | MORE
+

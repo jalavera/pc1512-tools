@@ -1,0 +1,250 @@
+HIDOS per a MS-DOS 3.20                                      versi¢ 0.9
+
+QuŠ ‚s
+------
+HIDOS posa el nucli de l'MS-DOS 3.20 (MSDOS.SYS) i totes les seves
+taules a la mem•ria superior: FILES, BUFFERS, FCBS, LASTDRIVE (les
+unitats) i els controladors del CONFIG.SYS que hi posis amb
+DEVICEHIGH=, i tamb‚
+l'intŠrpret (SHELL=: LOADHI i COMMAND.COM, amb el seu entorn). Amb /B
+tamb‚ hi va el BIOS del DOS.SYS (uns 8 KB). A la mem•ria convencional
+nom‚s hi queden la taula de vectors, les …rees de la ROM i del DOS
+(fins a 006FF), els controladors de DEVICE=, un bloc de 16 bytes a
+B7FF0 i el que hi carreguis tu.
+Resultat al PC1512 (736 KB, RAM superior BE00-FBFF):
+  abans:          programa executable m‚s extens 694 KB (711.008 bytes)
+  amb HIDOS 0.1:  programa executable m‚s extens 723 KB (740.800 bytes)
+  amb HIDOS 0.2:  programa executable m‚s extens 725 KB (743.184 bytes)
+  amb HIDOS /B:   programa executable m‚s extens 734 KB (751.840 bytes)
+                  (al simulador; a 86Box hauria de ser semblant)
+I FILES i BUFFERS ja no gasten mem•ria convencional: pots posar-ne els
+que vulguis (p. ex. FILES=30, BUFFERS=20) i el programa m‚s extens no
+canvia. Baixar-los no guanya res; els m¡nims del DOS 3.20 s¢n FILES=5
+(els 5 primers s¢n CON, AUX i PRN de tots els programes), BUFFERS=1 i
+FCBS=1,0: zero no s'admet.
+
+Requisits
+---------
+- La instalúlaci¢ de l'IOPATCH 5.0: C:\IO.SYS ‚s el carregador amb el
+  men£ i C:\DOS.SYS ‚s l'IO.SYS de Microsoft (MS-DOS 3.20 castell… de
+  l'Amstrad, 16235 bytes, CRC32 732A8228). HIDOS nom‚s treballa amb
+  aquest DOS.SYS: amb qualsevol altre diu que no el coneix i no toca
+  res.
+- RAM a la mem•ria superior des de l'arrencada (una targeta de mem•ria
+  de 86Box), com a m¡nim 40 KB seguits. Per defecte BE00-FBFF.
+- LOADHI 0.20 o posterior si fas servir LOADHI com a SHELL= (amb la
+  0.18 diria que /C nom‚s es pot fer servir quan es crea la zona; amb
+  la 0.19 diu "LOADHI /C: no va a dalt (pas 2...)" i la part
+  transit•ria del COMMAND.COM queda a baix).
+- MEM 0.17 o posterior per veure-ho b‚ (la 0.12 es confon; la 0.13 no
+  sap veure el BIOS a dalt amb /B; la 0.14, els controladors de baix; la 0.15
+  no en diu el nom; la 0.16 no detalla els de dalt).
+
+Contingut del disquet
+---------------------
+HIDOS.COM    el programa
+HIDOS.TXT    aquest fitxer
+HIDOS.ASM    el codi font del programa
+HIDOSK.ASM   el codi font del que s'afegeix al DOS.SYS (1.664 bytes)
+             nasm -f bin HIDOSK.ASM -o HIDOSK.BIN
+             nasm -f bin HIDOS.ASM -o HIDOS.COM
+LOADHI.COM, LOADHI.TXT, LOADHI.ASM, LOADHIT.COM   LOADHI 0.20
+MEM.COM, MEM.TXT, MEM.ASM                         MEM 0.17
+
+Instalúlaci¢
+------------
+1. Fes una c•pia del disc dur (de la imatge, a 86Box).
+2. Copia HIDOS.COM, LOADHI.COM i MEM.COM al disc dur (p. ex. C:\UTILS),
+   substituint els LOADHI.COM i MEM.COM d'abans.
+3. HIDOS                (o HIDOS /H:inici-final si la RAM ‚s en un altre
+                         lloc; vegeu m‚s avall)
+   o HIDOS /B           (tamb‚ el BIOS a dalt; vegeu "Compte")
+   Si ja hi tens una versi¢ anterior, HIDOS 0.9 l'actualitza i
+   conserva la zona (i el /B, des de la 0.3).
+4. Reinicia. En arrencar, abans de l'AUTOEXEC.BAT, surt:
+     HIDOS: MS-DOS a la mem•ria superior, BE00-FBFF (BIOS incl•s).
+   (sense "(BIOS incl•s)" si no fas servir /B). Si la zona no ‚s RAM:
+     HIDOS: no hi ha RAM a BE00-FBFF; MS-DOS a baix.
+   Mira-ho amb MEM /D.
+El LOADHI.CFG pot quedar igual. /H: no hi fa res (la zona ja la fa el
+DOS) i /B i /FILES ja no calen: posa els FILES i BUFFERS que vulguis al
+CONFIG.SYS, que van a dalt.
+
+Comentaris al CONFIG.SYS: REM
+-----------------------------
+L'MS-DOS 3.20 no coneix REM (va arribar amb l'MS-DOS 4): una l¡nia
+REM diu "Comando irreconocible en CONFIG.SYS". Amb HIDOS, les l¡nies
+que comencen per REM no fan res i no diuen res:
+  REM Ratol¡ a dalt
+  DEVICEHIGH=C:\MSDOS\MOUSE.SYS
+  REM DEVICE=C:\DRV\VELL.SYS        (desactivat)
+Funciona encara que la zona alta no sigui RAM. Sense HIDOS (DOS.SYS
+original) torna a sortir el missatge, per• el DOS continua igual.
+El punt i coma (;) de l'MS-DOS 6 no es pot fer servir: el SYSINIT
+del 3.20 se'l salta abans de mirar la paraula. Compte: el DOS nom‚s
+mira el principi de la paraula, de manera que REMOTE=... tamb‚ seria
+un comentari (no hi ha cap ordre del CONFIG.SYS que comenci per REM).
+
+Controladors: DEVICE= i DEVICEHIGH=
+-----------------------------------
+Com a l'MS-DOS 5 i 6:
+  DEVICE=      a la mem•ria convencional (com sense HIDOS).
+  DEVICEHIGH=  a la mem•ria superior. Mentre el controlador s'inicia,
+               l'INT 12h (la mida de la mem•ria) diu que la mem•ria
+               arriba fins al final de la zona alta: aix¡ els que la
+               miren per saber quanta en poden fer servir, com
+               RAMDRIVE.SYS, no diuen "memoria insuficiente".
+Exemple:
+  DEVICEHIGH=C:\DOS\ANSI.SYS                    a dalt
+  DEVICEHIGH=C:\MSDOS\RAMDRIVE.SYS 64 512 64     a dalt, disc de 64 KB
+  DEVICE=C:\DRV\VELL.SYS                        a baix
+Els DEVICE= van a baix de tot (a 00700 amb /B, o darrere el BIOS sense
+/B), un darrere l'altre en l'ordre del CONFIG.SYS, cadascun en un bloc
+de mem•ria seu amb el nom del fitxer (com fa l'MS-DOS 4). Els
+DEVICEHIGH= van dins el bloc de dades del DOS ("MSDOS  Datos de
+sistema"), per• cadascun porta davant una cap‡alera de 16 bytes amb el
+nom del fitxer i la mida. No cal fer res per a cada controlador: HIDOS
+ho fa a tots. MEM /D (0.17 o posterior) els mostra amb el seu nom; a
+baix:
+   00700-0482F    16.688   (16K)  VELL         DEVICE=
+i a dalt, a sota del bloc de dades del DOS:
+   C7010-DBD6F  1  85.344  (83K)  MSDOS        Datos de sistema
+   C7020-D710F  1  65.776  (64K)  RAMDRIVE     DEVICE=
+                                  D:           DEVICE=
+MEM /C els compta com a m•duls a part (i els treu de MSDOS).
+Si la zona no ‚s RAM en arrencar, o amb el DOS.SYS original (sense
+HIDOS), DEVICEHIGH= fa el mateix que DEVICE= (a baix): el CONFIG.SYS
+serveix igual amb i sense HIDOS.
+Si v‚ns d'una versi¢ anterior a la 0.8: all… DEVICE= anava a dalt;
+ara va a baix. Canvia a DEVICEHIGH= els que vulguis a dalt. Un
+DEVICELOW= que tinguis (0.5-0.7) continua anant a baix.
+RAMDRIVE /E i /A no s¢n mem•ria superior: /E ‚s mem•ria estesa (per
+sobre d'1 MB, nom‚s en ordinadors AT, 80286 o m‚s) i /A ‚s mem•ria
+expandida (EMS). El PC1512 (8086) no t‚ mem•ria estesa: per aix• diu
+que no ‚s un AT. Per tenir el disc a dalt, DEVICEHIGH= sense /E.
+
+és
+--
+  HIDOS                 aplica el peda‡ a C:\DOS.SYS (zona BE00-FBFF)
+  HIDOS A:              a A:\DOS.SYS
+  HIDOS /B              tamb‚ el BIOS del DOS.SYS a dalt (es pot combinar
+                        amb /H:; si el peda‡ ja hi ‚s, nom‚s ho activa)
+  HIDOS /B-             torna a deixar el BIOS a baix (la resta, a dalt)
+  HIDOS /H:C000-FBFF    zona de RAM superior que es fa servir (segments
+                        en hexadecimal, l'£ltim incl•s). Si el peda‡ ja
+                        hi ‚s, nom‚s canvia la zona.
+  HIDOS                 (amb el peda‡ ja posat) diu la zona que hi ha i
+                        si el BIOS ‚s a baix o a dalt (/B)
+  HIDOS /U              el desf…: el DOS.SYS torna a ser l'original
+ERRORLEVEL: 0 correcte (o no calia fer res), 1 no troba el DOS.SYS o
+sintaxi incorrecta, 2 no el reconeix (no ha tocat res), 3 error en
+escriure.
+La zona ha de ser RAM de deb• en arrencar i no ha d'encavalcar cap ROM
+(per exemple la de la controladora DTC). El nucli es posa al principi
+de la zona; al damunt hi van les taules i la resta queda lliure per a
+LOADHI.
+
+Com funciona
+------------
+En arrencar, el DOS.SYS (el BIOS del DOS de Microsoft) carrega el
+MSDOS.SYS i el SYSINIT el copia "darrere el BIOS" i el posa en marxa.
+HIDOS canvia uns 30 bytes del DOS.SYS en 11 llocs i hi afegeix 1.664 bytes al
+final:
+- Si tota la zona ‚s RAM, el SYSINIT es creu que la mem•ria acaba al
+  final de la zona: s'hi colúloca ell mateix, hi copia el nucli (al
+  principi de la zona) i el DOS hi fa les taules i la cadena de blocs.
+  Tot queda coherent perquŠ el DOS s'inicia directament all….
+- Just abans de carregar l'intŠrpret (SHELL=), posa davant de la cadena
+  de blocs la mem•ria convencional i un bloc de sistema a l'£ltim
+  par…graf de la convencional (B7FF0) que tapa el v¡deo, les ROM i el
+  nucli fins a la zona alta, com fan LOADHI i DOS 5.
+- Mentre s'engega l'intŠrpret, la mem•ria convencional queda reservada
+  (bloc de sistema 'HIDOS'): aix¡ el SHELL= i el que reserva en
+  engegar-se (l'entorn del COMMAND.COM) van a dalt. Un ganxo de 96 bytes
+  a l'INT 21h, a dalt, l'allibera quan el COMMAND.COM permanent (/P)
+  executa el primer programa (de l'AUTOEXEC.BAT o teclejat), abans de
+  carregar-lo. Si l'intŠrpret no ‚s un COMMAND.COM /P, l'allibera al
+  tercer EXEC. Mentrestant, per exemple a les ordres internes del
+  principi de l'AUTOEXEC.BAT, la mem•ria convencional no ‚s lliure.
+- Amb /B, el primer que fa el DOS.SYS en arrencar ‚s copiar-se ell
+  mateix (el BIOS, 8.656 bytes, i el SYSINIT) al principi de la zona,
+  corregir-hi les 24 adreces que porten el segment 0070h (cap‡aleres
+  dels controladors CON, AUX, PRN, CLOCK$, discos, COM i LPT, i les
+  crides del SYSINIT) i continuar all…. El nucli va just despr‚s del
+  BIOS, i la mem•ria convencional queda lliure des de 00700.
+- Si en arrencar no troba RAM a tota la zona, arrenca com sempre (amb
+  /B, el BIOS es queda a baix).
+- DEVICE=: abans de cada ordre DEVICE del CONFIG.SYS, el SYSINIT
+  canvia el punter on carrega els controladors a la mem•ria
+  convencional, i despr‚s de l'ordre el torna a dalt i hi fa el bloc
+  de mem•ria (MCB de sistema, 0008h, amb el nom).
+- DEVICEHIGH=: per reconŠixer la paraula, HIDOS li dona al SYSINIT
+  una taula de paraules nova (la de sempre amb DEVICEHIGH al davant;
+  el DOS original la pren per DEVICE, perquŠ nom‚s en compara el
+  principi). Canvia l'INT 12h mentre s'executa l'ordre i despr‚s
+  torna a posar la d'abans.
+El DOS.SYS passa de 16235 a 17904 bytes; el carregador de l'IOPATCH el
+llegeix sencer. L'IO.SYS i el MSDOS.SYS no es toquen.
+
+Compte
+------
+- Abans d'un IOPATCH /U, fes HIDOS /U: l'IOPATCH compara el DOS.SYS amb
+  l'IO.SYS i, si porta el peda‡, diu que no ‚s el seu i no fa res.
+- /B ‚s el m‚s arriscat: al simulador funcionen l'arrencada, el disc
+  dur, la consola, la impressora (ECHO > PRN), COPY, TYPE, DIR, DEL i
+  MEM, per• hi ha camins del BIOS que no s'hi han pogut provar (canvi
+  de disquet a A:/B:, ports sŠrie, error cr¡tic de disquetera,
+  Ctrl+Break, el rellotge). Prova-ho a 86Box amb una c•pia del disc:
+  formata i copia un disquet, DIR A: sense disquet (Anulúlar,
+  Reintentar...), DISKCOPY, el ratol¡ i el KEYBX. Si alguna cosa falla,
+  HIDOS /B- i reinicia: torna a la 0.2 sense desfer res m‚s.
+- Els controladors amb DEVICEHIGH= van a la mem•ria superior. Els
+  normals (MOUSE.SYS, ANSI.SYS, RAMDRIVE.SYS, controladors de
+  CD-ROM, DRIVER.SYS...) hi funcionen: al PC1512 la RAM de dalt ‚s RAM
+  normal del bus i el DMA tamb‚ hi arriba. Pot fallar un controlador
+  que doni per fet que ‚s per sota de 640 KB (A0000) o que es copi‹ a
+  si mateix a un lloc fix de la mem•ria convencional; ‚s rar. Si un
+  controlador no funciona a dalt, carrega'l amb DEVICE=. Un
+  RAMDRIVE.SYS gran es menjaria la zona alta: posa'l petit, o amb
+  DEVICE= si no et fa nosa perdre mem•ria convencional.
+- El DOS Plus no fa servir el DOS.SYS: no li afecta.
+- Si l'MS-DOS no arrenca: arrenca el DOS Plus (o des d'un disquet) i
+  executa HIDOS C: /U. Apunta fins on arriba l'arrencada.
+
+Historial
+---------
+0.9  20-11-2026  REM al CONFIG.SYS: les l¡nies de comentari no fan res
+                 (abans: "Comando irreconocible"). Actualitza un
+                 DOS.SYS de la 0.8.
+0.8  19-11-2026  Com a l'MS-DOS 5 i 6: DEVICE= a la mem•ria
+                 convencional i DEVICEHIGH= a la superior. DEVICELOW=
+                 ja no hi ‚s (si el poses, el DOS el pren per DEVICE=,
+                 a baix). Actualitza un DOS.SYS de la 0.7.
+0.7  19-11-2026  Els controladors de dalt (DEVICE= i DEVICEHIGH=)
+                 porten una cap‡alera amb el nom i la mida: MEM 0.17
+                 els detalla i ja no surten barrejats amb MSDOS.
+                 Actualitza un DOS.SYS de la 0.6.
+0.6  19-11-2026  Cada DEVICELOW va en un bloc de mem•ria seu amb el
+                 nom del fitxer (MEM 0.16 el mostra a part). DEVICEHIGH=
+                 ja no ‚s igual que DEVICE=: mentre s'inicia el
+                 controlador, l'INT 12h diu que hi ha mem•ria fins al
+                 final de la zona (RAMDRIVE.SYS ja no diu "memoria
+                 insuficiente"). Actualitza un DOS.SYS de la 0.5.
+0.5  19-11-2026  DEVICELOW= al CONFIG.SYS: el controlador va a la
+                 mem•ria convencional. DEVICEHIGH= ‚s com DEVICE= (a
+                 dalt). Actualitza un DOS.SYS de la 0.4.
+0.4  19-11-2026  En arrencar, abans de l'AUTOEXEC.BAT, diu on ‚s
+                 l'MS-DOS (i si el BIOS tamb‚ ‚s a dalt), o que no hi
+                 ha RAM a la zona. Actualitza un DOS.SYS de la 0.3 i en
+                 conserva la zona i el /B.
+0.3  19-11-2026  /B: tamb‚ el BIOS del DOS.SYS a la mem•ria superior
+                 (8,5 KB m‚s de mem•ria convencional: 734 KB). /B- el
+                 torna a baix. Actualitza un DOS.SYS amb la 0.1 o la
+                 0.2 i en conserva la zona; /U tamb‚ els desf….
+0.2  19-11-2026  L'intŠrpret (SHELL=) tamb‚ va a dalt: LOADHI i
+                 COMMAND.COM, i l'entorn del COMMAND.COM (2,4 KB m‚s de
+                 mem•ria convencional). Actualitza un DOS.SYS amb la 0.1
+                 i en conserva la zona; /U tamb‚ el desf….
+0.1  19-11-2026  Primera versi¢: nucli, FILES, BUFFERS, FCBS, unitats i
+                 controladors del CONFIG.SYS a la mem•ria superior.
+                 Nom‚s per al DOS.SYS castell… de l'Amstrad (732A8228).

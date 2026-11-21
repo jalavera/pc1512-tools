@@ -1,0 +1,75 @@
+GEMPATCH 0.1 - Temps de doble clic del GEM
+==========================================
+
+Quä fa
+------
+Canvia els temps de doble clic que fa servir el GEM a cada una de les
+5 velocitats que es trien al Desktop. Serveix sobretot per a 86Box:
+el GEM mesura el doble clic amb el rellotge de la mÖquina emulada, i
+amb l'avanáament rÖpid aquest rellotge corre mÇs de pressa i no dona
+temps de fer el segon clic.
+
+Funciona amb MS-DOS 2.0 o superior en qualsevol PC (8086 o mÇs).
+
+Instal˙laci¢
+------------
+Copia GEMPATCH.COM on vulguis (per exemple al directori \GEMBOOT) i
+executa'l. No queda resident ni cal cap altre fitxer.
+
+Com es fa servir
+----------------
+   GEMPATCH                     pregunta els 5 temps
+   GEMPATCH /D                  aplica els valors per defecte
+   GEMPATCH 6000 3000 300 200 150   aplica aquests valors
+   GEMPATCH /R                  torna a posar el GEM.EXE original
+   GEMPATCH C:\GEMBOOT ...      GEM.EXE Çs en aquest directori
+
+Si no s'indica directori, busca GEM.EXE al directori actual i desprÇs
+a \GEMBOOT.
+
+La primera vegada, GEM.EXE passa a dir-se GEM.ORI i se'n crea un de
+nou amb els temps canviats. GEM.ORI no es toca mai mÇs: les vegades
+segÅents GEMPATCH hi busca la taula i canvia directament GEM.EXE.
+GEMPATCH /R esborra GEM.EXE i torna a posar el nom a GEM.ORI.
+
+Valors per defecte
+------------------
+   Velocitat   Temps     Per a
+   1 (lenta)   6000 ms   emulaci¢ a mÇs del 1200%
+   2           3000 ms   emulaci¢ al 600-800%
+   3            300 ms   temps real (100%)
+   4            200 ms   temps real (100%)
+   5 (rÖpida)   150 ms   temps real (100%)
+
+   Emulaci¢ lenta (50%): 55-75 ms.
+   Valors originals del GEM: 450, 330, 275, 220, 165 ms.
+
+DesprÇs, al Desktop, tria la velocitat de doble clic segons la
+velocitat d'emulaci¢ que facis servir.
+
+Trucs i detalls
+---------------
+* Els temps compten en temps de la mÖquina emulada. Per calcular-ne
+  un: temps real desitjat (uns 400-500 ms) x velocitat d'emulaci¢.
+  Per exemple, a 700%: 450 x 7 = uns 3000 ms.
+* El GEM converteix el temps en tics del rellotge (1/18 s, uns 55 ms)
+  i arrodoneix cap avall. Per aixï el m°nim Çs 55 ms: amb menys
+  quedaria a 0 tics i el GEM no detectaria cap doble clic. El mÖxim
+  acceptat Çs 30000 ms.
+* No posis un temps llarg a la velocitat que facis servir al 100%: el
+  GEM espera tot aquest temps per saber si un clic Çs simple o doble,
+  i tot aniria encallat.
+* La taula Çs al codi del GEM (l'AES), no als fitxers d'idioma (.RSC).
+  Per aixï hauria de funcionar amb altres versions i idiomes del GEM.
+  GEMPATCH la busca pel seu contingut (450, 330, 275, 220, 165): si
+  no la troba, avisa i no toca res.
+* TambÇ reconeix un GEM.EXE canviat amb GEMDCLK 0.1.
+* Si GEM.EXE i GEM.ORI no s¢n de la mateixa mida (per exemple, has
+  posat un altre GEM), GEMPATCH s'atura. Fes GEMPATCH /R o esborra
+  el GEM.ORI que no correspongui.
+* Muntatge: nasm -f bin GEMPATCH.ASM -o GEMPATCH.COM
+
+Historial
+---------
+0.1  Primera versi¢. Substitueix el GEM.EXE parxejat de GEMDCLK 0.1.
+

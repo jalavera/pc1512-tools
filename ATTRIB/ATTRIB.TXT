@@ -1,0 +1,30 @@
+ATTRIB 1.0 - ATTRIB amb els atributs S i H per a MS-DOS 3.20
+=============================================================
+
+QuŠ fa
+------
+Substitueix l'ATTRIB del MS-DOS 3.20, que nom‚s sap canviar R (nom‚s
+lectura) i A (arxiu), per un que tamb‚ canvia H (ocult) i S (sistema),
+a l'estil de l'ATTRIB del MS-DOS 5.0. Els missatges s¢n en castell….
+
+és
+--
+   ATTRIB [+R|-R] [+A|-A] [+S|-S] [+H|-H] [[unitat:][ruta]nom] [/S]
+      /S   tamb‚ als subdirectoris
+Sense nom: tots els arxius del directori actual (*.*).
+Sense cap + ni -: mostra els atributs.
+
+Coses a saber
+-------------
+- Els directoris nom‚s es tracten si s'indiquen pel nom (sense
+  comodins).
+- Com el del MS-DOS 5: no modifica un arxiu ocult o de sistema si no
+  s'hi posa tamb‚ +H/-H o +S/-S.
+- Instalúlaci¢: copia ATTRIB.COM al directori del DOS, en lloc de
+  l'original (guarda'n una c•pia).
+
+Muntatge: nasm -f bin ATTRIB.ASM -o ATTRIB.COM
+
+Historial
+---------
+1.0  Versi¢ publicada.

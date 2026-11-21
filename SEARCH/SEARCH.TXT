@@ -1,0 +1,33 @@
+SEARCH 1.0 - Cerca un arxiu a totes les unitats (MS-DOS 3.0 o posterior)
+=======================================================================
+
+QuŠ fa
+------
+Busca un nom d'arxiu (amb comodins * i ?) a totes les unitats
+accessibles (A: a Z:) i a tots els directoris, tamb‚ els arxius i
+directoris ocults i de sistema. Per a cada coincidŠncia mostra:
+   RUTA - MIDA - DATA - HORA - HSRA - CRC32
+(HSRA: atributs ocult, sistema, nom‚s lectura, arxiu).
+Al final pregunta si es vol desar el resultat en un .TXT. Si ‚s que
+s¡, demana el directori i el nom, l'escriu, el torna a llegir i en
+comprova la mida i el CRC32.
+
+és
+--
+   SEARCH nom.ext        p. ex.  SEARCH COMMAND.COM
+                                 SEARCH *.BAK
+
+Coses a saber
+-------------
+- Les unitats buides o que no estan a punt se salten sense preguntar
+  (gestor propi de l'INT 24h, que respon "Fail").
+- En equips d'una sola disquetera, la B: ‚s la mateixa que l'A:.
+  SEARCH ho detecta (IOCTL 440Eh/440Fh): no surt el missatge "Insert
+  diskette for drive B:" i no explora dues vegades el mateix disc.
+- El CRC32 serveix per comprovar si dues c•pies d'un arxiu s¢n iguals.
+
+Muntatge: nasm -f bin SEARCH.ASM -o SEARCH.COM
+
+Historial
+---------
+1.0  Versi¢ publicada.

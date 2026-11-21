@@ -1,0 +1,152 @@
+AMSMOUSE 0.3 - Driver de ratol° m°nim per a l'Amstrad PC1512
+=============================================================
+
+Driver resident compatible amb l'API de Microsoft (INT 33h) per al ratol°
+de l'Amstrad PC1512. Funciona amb MS-DOS 2.x-6.x en un 8086. ês el mateix
+driver que porta KEYBX 2.3 (/M), perï com a programa a part: per a qui no
+fa servir KEYBX.
+
+Fitxers del disquet
+-------------------
+  AMSMOUSE.COM   el driver
+  AMSMOUSE.ASM   codi font (NASM)
+  AMSMOUSE.TXT   aquest fitxer
+
+Instal˙laci¢
+------------
+Copieu AMSMOUSE.COM al disc dur (per exemple a C:\DOS) i afegiu-lo a
+l'AUTOEXEC.BAT amb una d'aquestes formes:
+
+  AMSMOUSE              memïria convencional, al capdamunt
+  LOADHI AMSMOUSE       memïria alta: si s'executa des de dalt, el driver
+                        hi va (bloc lliure de la cadena del DOS)
+  AMSMOUSE /H           memïria alta sense LOADHI: primer bloc lliure de
+                        la cadena del DOS per sobre de la convencional
+  AMSMOUSE /H:ssss      al segment ssss (hex), per a RAM que no Çs a la
+                        cadena del DOS (p. ex. sota DOS Plus). Comprova
+                        que hi hagi RAM, que la zona sigui buida i que no
+                        sigui del DOS. /F salta la comprovaci¢ de zona
+                        buida (cal desprÇs d'un Ctrl+Alt+Supr).
+
+  AMSMOUSE /A:n         acceleraci¢ n = 0, 1, 2 (per defecte) o 3. Es
+                        pot posar en instal˙lar-lo o amb el driver ja
+                        carregat (la canvia en calent).
+  AMSMOUSE              amb el driver ja carregat: diu on Çs
+  AMSMOUSE /U           el descarrega i allibera la memïria
+  AMSMOUSE /?           ajuda
+
+Memïria: 2.144 bytes (2,1 KB), sense PSP: el driver es copia a un bloc
+propi i el programa acaba normalment. A memïria convencional el bloc va
+al capdamunt, de manera que no queda cap forat entre els programes. Amb
+/H, LOADHI o /H:ssss no gasta gens de memïria convencional.
+El bloc porta el nom AMSMOUSE a l'MCB (camp de DOS 4 i posteriors).
+
+Codis de sortida (ERRORLEVEL): 0 correcte, 1 error.
+
+Acceleraci¢ (/A:n)
+------------------
+Com mÇs mickeys es mou el ratol° en un tic (1/18 s), mÇs corre el cursor:
+               0-3     4-7     8-15    16 o mÇs
+   /A:0        x1      x1      x1      x1       (sense)
+   /A:1        x1      x1,25   x1,5    x2       (suau)
+   /A:2        x1      x1,5    x2      x3       (per defecte)
+   /A:3        x1      x2      x3      x4       (forta)
+Els moviments lents no s'acceleren mai. A 86Box al Mac, el macOS ja
+accelera el ratol°: si et va massa de pressa, prova /A:1 o /A:0. Els
+mickeys que reben els programes (funci¢ 0Bh) s¢n sempre els reals.
+
+GEM
+---
+Sota MS-DOS, el GEM del PC1512 no porta driver de ratol° propi: el seu
+controlador de pantalla (AMSTRAD.SYS) fa servir la INT 33h (funcions 0,
+4, 7, 8, 0Ch i 0Fh) i, si no troba cap driver, s'engega sense ratol°.
+AMSMOUSE li serveix i substitueix el MOUSE.COM d'Amstrad. El GEM dibuixa
+el seu cursor; el d'AMSMOUSE queda amagat.
+Sota DOS Plus no cal: el DOS Plus ja porta el driver integrat (i
+AMSMOUSE s'hi nega, perquä ja hi ha un driver).
+
+Amb KEYBX
+---------
+KEYBX 2.3 ja porta aquest driver (KEYBX /M), en un bloc a part i sense
+haver de vigilar l'ordre de cÖrrega. Si feu servir KEYBX, Çs millor aixï
+que AMSMOUSE. Si tot i aix° carregueu AMSMOUSE amb KEYBX (sense /M),
+carregueu AMSMOUSE DESPRêS de KEYBX: els botons del ratol° arriben pel
+teclat (codis 7Eh/7Dh) i el driver els ha de veure abans que ning£.
+
+Quä fa
+------
+- Mou el cursor llegint els comptadors del PC1512 (ports 78h i 7Ah) a
+  cada tic del rellotge (18,2 vegades per segon).
+- Els botons s'agafen del teclat i no arriben mai al programa com a tecles.
+- El cursor surt amagat; el mostra el programa (funci¢ 1).
+- Cursor de text per programari (inverteix l'atribut, com el de Microsoft)
+  en els modes 0-3 i 7, i cursor grÖfic de 16x16 en els modes CGA 4, 5 i 6.
+- NomÇs es redibuixa quan el cursor canvia de cel˙la (text) o de p°xel
+  (grÖfics); mai no es repinta la pantalla sencera.
+- Si un programa escriu a la cel˙la on hi ha el cursor de text sense
+  amagar-lo, el driver no la trepitja en moure'l.
+- Desactivat amb la funci¢ 1Fh, no toca els ports ni el cursor.
+- /U nomÇs funciona si AMSMOUSE Çs l'£ltim que ha capturat les INT 08h,
+  09h i 33h; si no, diu el problema i no toca res.
+
+Funcions INT 33h
+----------------
+  00h reset           01h mostra           02h amaga
+  03h posici¢/botons  04h posa posici¢     05h/06h info prÇmer/deixar
+  07h/08h l°mits X/Y  09h cursor grÖfic    0Ah cursor de text (programari)
+  0Bh comptadors      0Ch rutina d'usuari  0Fh relaci¢ mickey/p°xel
+  10h (= amaga)       14h intercanvia rutina
+  15h/16h/17h desa i restaura l'estat
+  1Ah/1Bh sensibilitat (es desa, no s'aplica)
+  1Dh/1Eh pÖgina      1Fh/20h desactiva/activa
+  21h reset           23h idioma           24h versi¢ (diu 6.26, bus)
+Les altres no fan res.
+
+Coordenades: pantalla virtual de 640x200 en tots els modes (com Microsoft).
+En text de 80 columnes cada carÖcter Çs 8x8; en 40 columnes, 16x8.
+
+Consells
+--------
+- Si el moviment vertical us sembla lent, Çs la relaci¢ estÖndard de
+  Microsoft: 8 mickeys per 8 p°xels en horitzontal i 16 en vertical. Els
+  programes la poden canviar amb la funci¢ 0Fh (el GEM ho fa).
+- Si ja hi ha un altre driver de ratol° instal˙lat, AMSMOUSE s'hi nega.
+- Si teniu la versi¢ 0.1 carregada, descarregueu-la amb l'AMSMOUSE 0.1 /U
+  abans de carregar la 0.3 (no la reconeix). La 0.2 s° que la reconeix.
+
+Limitacions
+-----------
+- No hi ha cursor de text per maquinari (funci¢ 0Ah amb BX=1 s'ignora).
+- El mode de 16 colors propi del PC1512 (640x200x16) es tracta com el mode 6:
+  el cursor nomÇs es dibuixa al pla que es veu a B800h.
+- La funci¢ 10h amaga el cursor sense mirar la zona.
+- Sense llapis ïptic, interrupcions alternatives (18h/19h) ni idiomes.
+- Si un programa canvia de mode de v°deo amb el cursor visible i no crida la
+  funci¢ 0, el primer moviment pot deixar restes.
+- Si el ratol° es mou molt de pressa entre dos tics (mÇs de 127 punts),
+  el comptador de 8 bits pot donar la volta.
+
+Historial de canvis
+-------------------
+0.3  20-11-2026  Correcci¢: LOADHI AMSMOUSE deia que no hi havia cap
+                 bloc lliure a dalt, perquä LOADHI dona al programa tot
+                 el bloc lliure mÇs gran. Ara s'encongeix i el driver va
+                 al capdamunt d'aquest bloc (igual que a baix).
+0.2  20-11-2026  Els canvis del ratol° de KEYBX 2.0-2.2:
+                 - Sense PSP: el driver va a un bloc propi; a memïria
+                   convencional, al capdamunt (no deixa forats).
+                   Ocupa 2,1 KB en lloc de 2,3 KB.
+                 - Executat amb LOADHI, va a memïria alta.
+                 - Corba d'acceleraci¢ /A:0-3, tambÇ en calent.
+                 - Desactivat (funci¢ 1Fh) ja no buida els comptadors.
+                 - /H:ssss comprova tambÇ que la zona sigui buida (/F).
+                 - Funciona des del DOS 2.x.
+0.1  19-11-2026  Primera versi¢.
+                 - Driver INT 33h amb cursor de text i cursor grÖfic CGA.
+                 - CÖrrega a memïria convencional, a memïria alta enllaáada (/H)
+                   o a un segment fix (/H:ssss). Compatible amb LOADHI.
+                 - DescÖrrega amb /U.
+
+Assemblar
+---------
+  NASM -f bin AMSMOUSE.ASM -o AMSMOUSE.COM

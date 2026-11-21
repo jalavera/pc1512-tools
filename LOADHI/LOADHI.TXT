@@ -1,4 +1,4 @@
-LOADHI per a MS-DOS 3.x                                     versi¢ 0.18
+LOADHI per a MS-DOS 3.x                                     versi¢ 0.20
 
 QuŠ ‚s
 ------
@@ -314,6 +314,18 @@ LOADHI no deixa crear la zona a BC00-BFFF si hi ha el mirall del v¡deo
 
 Historial
 ---------
+LOADHI 0.20 19-11-2026  Amb HIDOS 0.2 o posterior, /C deia "no va a
+                        dalt (pas 2, codi 0008h)" i deixava la part
+                        transit•ria del COMMAND.COM a baix: la mem•ria
+                        convencional ja la t‚ reservada HIDOS i no
+                        quedava res m‚s per tapar. Ara n'hi ha prou
+                        que el que queda lliure sigui a dalt.
+LOADHI 0.19 19-11-2026  Amb HIDOS (nucli del DOS a la mem•ria superior),
+                        la zona alta ja existeix quan LOADHI s'executa
+                        com a SHELL=: ara /C, /B, /FILES, /RB i /RC hi
+                        funcionen igualment (abans deia que nom‚s es
+                        podien fer servir quan es crea la zona). /H no
+                        hi fa res: la zona ‚s la que ha fet el DOS.
 LOADHI 0.18 15-11-2026  La mem•ria superior comen‡a a BC00 (abans C000):
                         amb el v¡deo sense mirall i la DTC a BC00, la zona
                         pot comen‡ar a BE00 i arribar a 248 KB seguits.
