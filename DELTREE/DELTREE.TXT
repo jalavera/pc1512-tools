@@ -1,0 +1,56 @@
+DELTREE 0.1 - Clon del DELTREE de MS-DOS 6.22 per a MS-DOS 3.20
+================================================================
+
+Esborra un directori amb tots els seus arxius i subdirectoris, o arxius
+solts. Funciona a MS-DOS 3.20 o superior en un 8086/8088 (PC1512).
+Els missatges s¢n en castellÖ, com els del DELTREE de MS-DOS 6.22.
+
+Contingut del disquet
+  DELTREE.COM   el programa
+  DELTREE.ASM   el codi font (NASM)
+  DELTREE.TXT   aquest fitxer
+
+Instal˙laci¢
+  Copia DELTREE.COM a un directori del PATH, per exemple:
+     COPY A:DELTREE.COM C:\DOS
+  Per recompilar-lo:  nasm -f bin DELTREE.ASM -o DELTREE.COM
+
+Com s'usa
+  DELTREE [/Y] [unitat:]ruta [[unitat:]ruta[...]]
+
+  /Y      No demana confirmaci¢.
+  /?      Mostra l'ajuda.
+
+  Exemples:
+     DELTREE C:\TEMP            esborra TEMP i tot el que contÇ
+     DELTREE /Y C:\TEMP\*.*     buida TEMP perï el conserva
+     DELTREE *.BAK VELL         diverses rutes alhora
+
+  Sense /Y pregunta per a cada element que troba:
+     ®Eliminar el directorio "C:\TEMP" y todos sus subdirectorios? [S/N]
+  Respon S (o Y) per esborrar i N per saltar-lo. Ctrl+C l'atura.
+
+Quä fa
+  - Esborra tambÇ arxius i directoris ocults, de sistema i de nomÇs
+    lectura: abans d'esborrar-los els treu els atributs.
+  - Admet comodins a l'£ltim element de la ruta.
+  - No esborra el directori arrel ni el directori actual (ni cap
+    directori que contingui el directori actual).
+  - En acabar retorna ERRORLEVEL 0 si tot ha anat bÇ i 1 si hi ha
+    hagut algun error (ruta no vÖlida, accÇs denegat...).
+
+Diferäncies amb el de MS-DOS 6.22
+  - ês un .COM de menys de 2 KB i funciona des de MS-DOS 3.20.
+  - Protegeix el directori actual abans de comenáar, en lloc de
+    buidar-lo i fallar al final.
+  - Els textos poden no ser idäntics lletra per lletra als de
+    l'original en castellÖ.
+
+Consells
+  - Prova primer sense /Y: veurÖs quä esborrarÖ abans de fer-ho.
+  - Amb comodins (*.*) pregunta per cada element per separat.
+  - Si una unitat no tÇ disc, DOS mostrarÖ la pregunta habitual
+    d'error cr°tic (Anular, Reintentar...), com amb l'original.
+
+Historial
+  0.1 (23/11/2026)  Primera versi¢.
