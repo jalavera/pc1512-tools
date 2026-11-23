@@ -1,10 +1,12 @@
 ; =====================================================================
 ;  GEMHI.ASM - Engega el GEM i li posa a la memoria alta el que carrega
 ;              en arrencar (AMSTRAD.SYS, accessoris, GEM.RSC...)
-;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.18
+;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.21
 ;
 ;  Muntatge:   nasm -f bin GEMHI.ASM -o GEMHI.COM
-;  Us:         GEMHI programa [parametres]      p. ex.  GEMHI GEMVDI
+;  Us:         GEMHI [/D] /A:lletres /B:lletres programa [parametres]
+;              lletres de HVGRS, cadascuna a /A: (alta) o a /B: (baixa)
+;              p. ex. GEMHI /A:HVG /B:RS GEMVDI
 ;
 ;  GEMHI executa el programa (GEMVDI, que engega GEM.EXE) i, mentre el
 ;  GEM arrenca, respon les peticions de memoria al DOS (INT 21h, 48h)
@@ -55,13 +57,28 @@
 ;  porta la marca amb programa 'B', la peticio de memoria seguent prou
 ;  gran per a la seva imatge va a la convencional.
 ;  En acabar, diu quants blocs ha posat a dalt.
+;  0.19: on va cada peca, sempre explicit: /V GEMVDI, /G GEM.EXE (el
+;  primer EXEC de GEMVDI; a dalt com una aplicacio, amb les seves
+;  propies variables), /R el que el GEM demana mentre arrenca (GEM.RSC,
+;  memoria interna) i /S els controladors i les lletres que GEMVDI
+;  carrega amb FCB (23h mida d'un .SYS o .FNT i, tot seguit, 48h). Els
+;  accessoris continuen amb la seva marca (sense marca: a dalt). Si una
+;  peca demana dalt i no hi cap, va a baix.
+;  0.20: /H GEMHI mateix (A: es copia a dalt; B: es queda a baix). Nomes
+;  queda a la memoria fins a fi_resident (unes 6,4 KB, abans tot el
+;  programa); l'arrencada (interruptors, rutes, textos d'ajuda) va
+;  despres. GEM.EXE a dalt fa servir el codi d'app_exec (exg) i es desa
+;  el seu estat a gv_ctx mentre corre.
+;  0.21: les lletres agrupades per lloc: /A:HVGRS, /B:..., o barrejat
+;  (/A:HVG /B:RS). Totes cinc, una sola vegada; si en falta alguna, ho
+;  diu.
 ; =====================================================================
 
         cpu     8086
         org     100h
 
-MAXBL   equ     64              ; blocs convencionals tapats a la vegada
-MAXREG  equ     40              ; peticions servides a dalt (per l'informe)
+MAXBL   equ     32              ; blocs convencionals tapats a la vegada
+MAXREG  equ     20              ; peticions servides a dalt (per l'informe)
 MAXPAR  equ     1000h           ; peticions de mes de 64 KB: a baix
 
 start:  jmp     inici
@@ -85,7 +102,7 @@ hiseg   dw      0               ; GEMHI copiat a dalt: el seu segment
 gvpsp   dw      0               ; PSP de GEMVDI carregat a dalt
 gempsp  dw      0               ; PSP del GEM (el que fa l'EXEC de les aplicacions)
 app_dh  db      0               ; 1: l'aplicacio en marxa vol les dades a dalt
-acc_lo  dw      0               ; accessori marcat 'a baix': paragrafs de la imatge
+acc_par dw      0               ; accessori que s'acaba d'obrir: paragrafs de la imatge
 apps    db      0               ; 1: aplicacions a dalt; 2: n'hi ha una en marxa
 app_sp  dw      0
 app_ss  dw      0
@@ -119,6 +136,8 @@ int21:  cmp     ah, 48h
         je      .open
         cmp     ah, 4Ch
         je      .term
+        cmp     ah, 23h
+        je      .fsz
         cmp     ah, 4Bh
         jne     .chain
         cmp     al, 1                   ; EXEC (4B00h, 4B01h)
@@ -126,7 +145,22 @@ int21:  cmp     ah, 48h
         cmp     byte [cs:fase], 0
         je      .app
         inc     byte [cs:nexec]         ; 1r: GEMVDI -> GEM.EXE
-        cmp     byte [cs:nexec], 2      ; 2n: el GEM engega l'escriptori
+        cmp     byte [cs:nexec], 1
+        jne     .n2
+        push    bx                      ; (0.19) qui fa aquest EXEC: GEMVDI
+        push    ax
+        mov     ah, 51h
+        pushf
+        call    far [cs:old21]
+        mov     [cs:vpsp], bx
+        pop     ax
+        pop     bx
+        cmp     al, 0
+        jne     .chain
+        cmp     byte [cs:opt_g], 'A'    ; (0.19) /G:A: GEM.EXE a dalt
+        jne     .chain
+        jmp     gem_exec
+.n2:    cmp     byte [cs:nexec], 2      ; 2n: el GEM engega l'escriptori
         jb      .chain
         mov     byte [cs:fase], 0
         push    ax                      ; qui fa l'EXEC: el GEM
@@ -180,14 +214,27 @@ int21:  cmp     ah, 48h
         jae     .chain                  ;   com sempre
         or      bx, bx
         jz      .chain
-        cmp     word [cs:acc_lo], 0     ; l'accessori marcat 'a baix'
-        je      .ah
-        cmp     bx, [cs:acc_lo]
-        jb      .ah
-        mov     word [cs:acc_lo], 0
-        jmp     .chain
-.ah:    mov     [cs:sv_bx], bx
-        call    tapa
+        mov     [cs:sv_bx], bx
+        mov     byte [cs:cls], 0        ; (0.19) R: el GEM mentre arrenca
+        cmp     word [cs:acc_par], 0    ; un accessori que s'acaba d'obrir
+        je      .ns
+        cmp     bx, [cs:acc_par]
+        jb      .ns
+        mov     word [cs:acc_par], 0
+        mov     byte [cs:cls], 2
+        cmp     byte [cs:acc_low], 0    ;   la seva marca (sense: a dalt)
+        jne     .lo
+        jmp     short .ah
+.ns:    cmp     byte [cs:s_next], 0     ; (0.19) S: un .SYS o .FNT de GEMVDI
+        je      .rr
+        mov     byte [cs:s_next], 0
+        mov     byte [cs:cls], 1
+        cmp     byte [cs:opt_s], 'B'
+        je      .lo
+        jmp     short .ah
+.rr:    cmp     byte [cs:opt_r], 'B'
+        je      .lo
+.ah:    call    tapa
         mov     ah, 48h
         mov     bx, [cs:sv_bx]
         pushf
@@ -195,7 +242,7 @@ int21:  cmp     ah, 48h
         pushf
         call    destapa
         popf
-        jc      .baix
+        jc      .lo
         cmp     ax, [cs:convtop]        ; ha anat a dalt?
         jb      .ok
         push    bx
@@ -214,11 +261,50 @@ int21:  cmp     ah, 48h
         add     [cs:totpar], ax
         pop     ax
         pop     bx
-.ok:    clc
+.ok:    call    compta
+        clc
         retf    2                       ; CF=0, AX = segment
-.baix:  mov     bx, [cs:sv_bx]          ; no hi cap a dalt: a baix
+.lo:    mov     bx, [cs:sv_bx]          ; a baix (o no hi cap a dalt)
         mov     ah, 48h
-        jmp     .chain
+        pushf
+        call    far [cs:old21]
+        jc      .lx
+        call    compta
+        clc
+.lx:    retf    2
+
+; (0.19) GEMVDI demana la mida d'un fitxer (FCB): si es un .SYS o un .FNT,
+; la peticio de memoria seguent es la S
+.fsz:   cmp     byte [cs:fase], 0
+        je      .chain
+        pushf
+        call    far [cs:old21]
+        or      al, al
+        jnz     .yx
+        push    si
+        push    ax
+        mov     si, dx
+        cmp     byte [si], 0FFh         ; FCB estes
+        jne     .y0
+        add     si, 7
+.y0:    mov     ax, [si+9]
+        and     ax, 0DFDFh
+        cmp     ax, 'SY'
+        jne     .y1
+        mov     al, [si+11]
+        and     al, 0DFh
+        cmp     al, 'S'
+        je      .ys
+.y1:    cmp     ax, 'FN'
+        jne     .y2
+        mov     al, [si+11]
+        and     al, 0DFh
+        cmp     al, 'T'
+        jne     .y2
+.ys:    mov     byte [cs:s_next], 1
+.y2:    pop     ax
+        pop     si
+.yx:    retf    2
 
 ; dades d'una aplicacio amb la marca 'dades a dalt': si qui demana es
 ; fill directe del GEM, primer a dalt (sense limit de mida; les consultes
@@ -319,8 +405,8 @@ int21:  cmp     ah, 48h
         pop     ax
         jmp     .chain
 
-; el GEM obre un fitxer mentre arrenca: si es un .ACC amb la marca
-; 'programa a baix', ens apuntem la mida de la seva imatge
+; el GEM obre un fitxer mentre arrenca: si es un .ACC, ens apuntem la
+; mida de la seva imatge i la seva marca (0.19: 'B' a baix; si no, a dalt)
 .open:  cmp     byte [cs:fase], 0
         je      .chain
         call    esacc
@@ -331,8 +417,12 @@ int21:  cmp     ah, 48h
         call    marcat                  ; ZF=1: a baix
         pop     ax
         mov     [cs:app_dh], al
-        pop     ax
-        mov     word [cs:acc_lo], 0
+        mov     byte [cs:acc_low], 0
+        jne     .o0
+        mov     byte [cs:acc_low], 1
+.o0:    pop     ax
+        mov     word [cs:acc_par], 0
+        cmp     word [cs:hdr], 'MZ'
         jne     .chain
         push    ax
         push    cx
@@ -344,7 +434,7 @@ int21:  cmp     ah, 48h
         sub     ax, 32
         ja      .o2
 .o1:    mov     ax, 1
-.o2:    mov     [cs:acc_lo], ax
+.o2:    mov     [cs:acc_par], ax
         pop     cx
         pop     ax
         jmp     .chain
@@ -432,6 +522,10 @@ app_exec:
         pop     ds                      ; DS:DX = el programa
         mov     [cs:app_sp], sp
         mov     [cs:app_ss], ss
+        mov     ah, 51h                 ; (0.20) qui fa l'EXEC (el GEM, o
+        pushf                           ;   GEMVDI per a GEM.EXE)
+        call    far [cs:old21]
+        mov     [cs:fpar], bx
         call    tapa
         push    cs
         pop     es
@@ -447,12 +541,17 @@ app_exec:
         mov     ah, 51h                 ; el PSP del programa carregat
         pushf
         call    far [cs:old21]
-        cmp     bx, [cs:gempsp]
+        cmp     bx, [cs:fpar]
         jne     .psp
         call    fillg
         or      bx, bx
         jz      .baix
-.psp:   mov     byte [cs:apps], 2
+.psp:   cmp     byte [cs:exg], 0
+        jne     .pg
+        mov     byte [cs:apps], 2
+        jmp     short .pp
+.pg:    mov     byte [cs:g_alt], 1
+.pp:
         mov     es, bx                  ; quan acabi, torna a app_end
         mov     word [es:0Ah], app_end
         mov     [es:0Ch], cs
@@ -493,7 +592,24 @@ app_exec:
         mov     ah, 1Ah
         pushf
         call    far [cs:old21]
-        cli
+        cmp     byte [cs:exg], 0        ; (0.20) GEM.EXE: el seu estat, a part
+        je      .go
+        mov     byte [cs:exg], 0
+        push    cs
+        pop     es
+        push    cs
+        pop     ds
+        cld
+        mov     si, gem_ret             ; gem_ret gem_sp gem_ss
+        mov     di, gv_ctx
+        mov     cx, 5
+        rep     movsw
+        mov     si, [app_sp]            ; els registres desats (9 paraules)
+        mov     cx, 9
+        rep     movsw
+        mov     ax, [app_sp]
+        stosw
+.go:    cli
         mov     ss, [cs:apb+10h]
         mov     sp, [cs:apb+0Eh]
         sti
@@ -502,6 +618,7 @@ app_exec:
         xor     ax, ax
         jmp     far [cs:apb+12h]
 .baix:  mov     byte [cs:dbg_why], 4    ; (0.16) /D: no hi cabia
+        mov     byte [cs:exg], 0
         pop     es                      ; no hi cap a dalt: EXEC normal
         pop     ds
         pop     bp
@@ -519,11 +636,29 @@ app_exec:
 
 ; l'aplicacio ha acabat (el DOS ja ha tornat el PSP actual al GEM)
 app_end:
-        cli
+        cmp     byte [cs:apps], 2       ; (0.20) no hi ha cap aplicacio en
+        je      .ap                     ;   marxa: acaba GEM.EXE (/G:A).
+        push    cs                      ;   Es torna a posar el seu estat
+        pop     es                      ;   (els registres no compten: el
+        push    cs                      ;   DOS torna amb un marc nostre)
+        pop     ds
+        cld
+        mov     si, gv_ctx
+        mov     di, gem_ret
+        mov     cx, 5
+        rep     movsw
+        mov     ax, [gv_ctx+28]         ; app_sp de GEM.EXE
+        mov     [app_sp], ax
+        mov     [app_ss], cs
+        mov     di, ax
+        mov     cx, 9
+        rep     movsw
+        jmp     short .g
+.ap:    mov     byte [cs:apps], 1
+.g:     cli
         mov     ss, [cs:app_ss]
         mov     sp, [cs:app_sp]
         sti
-        mov     byte [cs:apps], 1
         pop     es
         pop     ds
         pop     bp
@@ -550,6 +685,15 @@ app_end:
         sti
         clc
         retf    2
+
+;---------------------------------------------------------------------
+;  (0.19) /G:A: GEM.EXE a dalt, com una aplicacio (0.20: amb el mateix
+;  codi). Quan ja corre, el seu estat es desa a part (gv_*): mentre
+;  corre el GEM, les aplicacions fan servir les variables d'app_exec.
+; ---------------------------------------------------------------------
+gem_exec:
+        mov     byte [cs:exg], 1
+        jmp     app_exec
 
 ; ZF=1 si DS:DX acaba en .APP
 esapp:  push    si
@@ -747,6 +891,7 @@ logapp: push    ax
 ; (0.16) /D: enganxa INT EFh (al final de l'arrencada; el GEMVDI ja hi es)
 dbg_on: cmp     byte [cs:dbg], 0
         je      .x
+        mov     byte [cs:dgem], 1       ; (0.19) primer, l'alerta del GEM
         push    ax
         push    bx
         push    dx
@@ -971,7 +1116,7 @@ fillg:  push    es
         cmp     word [es:0], 20CDh
         jne     .p
         push    ax
-        mov     ax, [cs:gempsp]
+        mov     ax, [cs:fpar]
         cmp     [es:16h], ax
         pop     ax
 .p:     pop     es
@@ -1044,7 +1189,6 @@ pblock  dw      0                       ; entorn: el nostre
         dw      0, 0                    ; 4B01h: SS:SP del programa
         dw      0, 0                    ;        CS:IP del programa
 alt     db      0                       ; 1: el programa s'ha carregat a dalt
-tmp     times 80 db 0
 fcb1    times 37 db 0
 fcb2    times 37 db 0
 cmdtail times 130 db 0
@@ -1053,173 +1197,24 @@ sv_sp   dw      0
 sv_ss   dw      0
 
 ; ---------------------------------------------------------------------
-;  Inici. Tot el programa es queda a la memoria mentre dura el GEM
-;  (uns 2 KB): el codi de despres de l'EXEC ha de continuar-hi.
+;  (0.20) Part resident de l'arrencada: GEMHI ja es on s'ha de quedar
+;  (a dalt o a baix, /H) i el ganxo ja hi es. Es queda nomes amb la
+;  part resident (el que hi ha des d'inici ja no cal) i carrega GEMVDI.
 ; ---------------------------------------------------------------------
-inici:  cld
-        mov     sp, pila
-        mov     [lowpsp], cs
-        mov     si, 81h                 ; nom del programa
-        call    salta
-        cmp     byte [si], '/'          ; (0.16) /D: alertes de depuracio
-        jne     .nd
-        mov     al, [si+1]
-        and     al, 0DFh
-        cmp     al, 'D'
-        jne     .nd
-        mov     byte [dbg], 1
-        add     si, 2
-        call    salta
-.nd:
-        cmp     byte [si], 13
-        jne     .p
-        mov     dx, t_us
-        jmp     error
-.p:     mov     di, prog
-.cn:    lodsb
-        cmp     al, ' '
-        je      .cf
-        cmp     al, 9
-        je      .cf
-        cmp     al, 13
-        je      .cf
-        cmp     al, '/'
-        je      .cf
-        stosb
-        jmp     .cn
-.cf:    dec     si
-        mov     byte [di], 0
-        push    di                      ; ¨extensio?
-        mov     bx, prog
-        xor     dl, dl
-.x:     cmp     bx, di
-        jae     .x2
-        mov     al, [bx]
-        cmp     al, '.'
-        jne     .x1
-        mov     dl, 1
-.x1:    cmp     al, '\'
-        jne     .x1b
-        xor     dl, dl
-.x1b:   inc     bx
-        jmp     .x
-.x2:    pop     di
-        or      dl, dl
-        jnz     .tail
-        push    si                      ; sense extensio: .EXE o .COM
-        mov     si, e_exe
-        call    copia
-        call    existeix
-        jnc     .ext
-        mov     si, e_com
-        call    copia
-        call    existeix
-        jnc     .ext
-        pop     si
-        mov     dx, t_nofile
-        jmp     error
-.ext:   pop     si
-.tail:  mov     di, cmdtail+1           ; la resta de la linia
-        xor     cx, cx
-.t:     lodsb
-        cmp     al, 13
-        je      .te
-        stosb
-        inc     cx
-        jmp     .t
-.te:    mov     al, 13
-        stosb
-        mov     [cmdtail], cl
-        mov     si, cmdtail+1           ; FCB 1 i 2
-        mov     di, fcb1
-        mov     ax, 2901h
+llanca: push    cs                      ; el bloc on som (el PSP, a baix; el
+        pop     es                      ;   bloc copiat, a dalt): nomes la
+        mov     bx, (fi_resident-start+100h+15)/16  ; part resident
+        mov     ah, 4Ah
         int     21h
-        mov     di, fcb2
-        mov     ax, 2901h
-        int     21h
-        mov     [pblock+4], cs
-        mov     [pblock+8], cs
-        mov     [pblock+12], cs
-        call    absolut                 ; ruta completa del programa
-        mov     al, [prog]              ; el registre: per si de cas, a l'arrel
-        mov     [logpath], al           ;   de la unitat del GEM...
-        call    rutalog                 ; ...pero millor al costat de GEMHI.COM
-
-        mov     ah, 52h                 ; cadena de blocs i convencional
-        int     21h
-        mov     ax, [es:bx-2]
-        mov     [firstmcb], ax
-        int     12h
-        mov     cl, 6
-        shl     ax, cl
-        mov     [convtop], ax
-        call    hiha_zona
-        jnc     .z
-        mov     dx, t_nozona
-        mov     ah, 9
-        int     21h
-
-.z:     mov     bx, (fi_resident-start+100h+15)/16
-        push    cs
-        pop     es
-        mov     ah, 4Ah                 ; nomes el que cal
-        int     21h
-
-        call    tapa                    ; GEMHI mateix, a dalt: un bloc
-        mov     bx, (fi_resident-start+100h+15)/16
-        mov     ah, 48h
-        int     21h
-        pushf
-        call    destapa
-        popf
-        jc      .hook
-        cmp     ax, [convtop]
-        jae     .cp
-        mov     es, ax                  ; ha anat a baix: no serveix
-        mov     ah, 49h
-        int     21h
-        jmp     short .hook
-.cp:    mov     es, ax                  ; copia (PSP inclos: mateixos
-        xor     si, si                  ;   desplacaments)
-        xor     di, di
-        mov     cx, fi_resident-start+100h
-        rep     movsb
-        push    ax
-        mov     ax, .alt
-        push    ax
-        retf                            ; continua al bloc de dalt
-.alt:   cli
-        mov     ax, cs
-        mov     ds, ax
-        mov     es, ax
-        mov     ss, ax
-        mov     sp, pila
-        sti
-        cld
-        mov     [hiseg], ax
-        mov     [pblock+4], cs
-        mov     [pblock+8], cs
-        mov     [pblock+12], cs
-        dec     ax                      ; el bloc, de moment, de GEMHI
-        mov     es, ax
-        mov     ax, [lowpsp]
-        mov     [es:1], ax
-.hook:  push    cs
-        pop     es
-        mov     ax, 3521h
-        int     21h
-        mov     [old21], bx
-        mov     [old21+2], es
-        mov     dx, int21
-        mov     ax, 2521h
-        int     21h
-
         mov     byte [fase], 1
         mov     byte [nexec], 0FFh      ; el nostre EXEC tambe passa pel ganxo
         mov     [sv_sp], sp
         mov     [sv_ss], ss
+        mov     word [bl_seg], 0
+        cmp     byte [opt_v], 'B'       ; (0.19) /V:B: GEMVDI a baix
+        je      .vb
         call    tapa                    ; el programa, a dalt: 4B01h
-        push    cs
+.vb:    push    cs
         pop     es
         mov     dx, prog
         mov     bx, pblock
@@ -1372,55 +1367,6 @@ fill:   push    es
         pop     es
         ret
 
-; logpath = la carpeta de GEMHI.COM (de l'entorn: despres de les
-; variables, 00 00, una paraula i la ruta del programa) + GEMHI.LOG
-rutalog:
-        push    ds
-        mov     ax, [2Ch]
-        or      ax, ax
-        jz      .x
-        mov     ds, ax
-        xor     si, si
-.v:     cmp     word [si], 0            ; final de les variables
-        je      .p
-        inc     si
-        cmp     si, 7FF0h
-        jb      .v
-        jmp     short .x
-.p:     add     si, 4                   ; 00 00 i el comptador
-        cmp     byte [si], 0            ; (sense ruta: es queda a l'arrel)
-        je      .x
-        mov     di, logpath
-        xor     bx, bx                  ; despres de la darrera '\'
-.c:     lodsb
-        mov     [cs:di], al
-        inc     di
-        cmp     al, '\'
-        jne     .c1
-        mov     bx, di
-.c1:    or      al, al
-        jz      .f
-        cmp     di, logpath+80-12
-        jb      .c
-        mov     byte [cs:logpath+3], 0  ; massa llarga: a l'arrel
-        mov     bx, logpath+3
-.f:     or      bx, bx
-        jnz     .n
-        mov     bx, logpath+3           ; sense '\': a l'arrel
-        mov     byte [cs:logpath+2], '\'
-.n:     push    cs
-        pop     ds
-        mov     si, t_log
-        mov     di, bx
-.k:     lodsb
-        mov     [cs:di], al
-        inc     di
-        or      al, al
-        jnz     .k
-.x:     pop     ds
-        ret
-t_log   db      'GEMHI.LOG', 0
-
 
 ; ---------------------------------------------------------------------
 ;  /D (0.16): alertes del GEM amb el que GEMHI ha fet amb cada aplicacio.
@@ -1456,7 +1402,11 @@ intefd: jmp     short .go               ; (0.17) com el de l'AES: les
         push    di
         push    ds
         push    es
-        call    alt_ini
+        cmp     byte [cs:dgem], 0       ; (0.19) la primera vegada (l'escriptori),
+        je      .i1                     ;   abans, on ha anat el GEM
+        mov     byte [cs:dgem], 0
+        call    alt_gem
+.i1:    call    alt_ini
         pop     es
         pop     ds
         pop     di
@@ -1622,6 +1572,92 @@ alt_ini:
 .d:     call    dcpy
         jmp     alerta
 
+; (0.19) alerta amb on ha anat cada peca del GEM: la lletra triada
+; (/V /G /R /S) i on es de debo
+alt_gem:
+        push    cs
+        pop     es
+        push    cs
+        pop     ds
+        cld
+        mov     di, dtext
+        mov     si, d_g0                ; "[1][" i (0.20) GEMHI mateix
+        call    dcpy
+        mov     si, d_gh
+        mov     ax, cs
+        mov     bl, [opt_h]
+        call    gpeca
+        mov     si, d_gv
+        mov     ax, [vpsp]
+        mov     bl, [opt_v]
+        call    gpeca
+        mov     si, d_gg
+        mov     ax, [gempsp]
+        mov     bl, [opt_g]
+        call    gpeca
+        mov     si, d_gr
+        mov     bl, [opt_r]
+        mov     bp, 0
+        call    gcomp
+        mov     si, d_gs
+        mov     bl, [opt_s]
+        mov     bp, 4
+        call    gcomp
+        jmp     alerta
+
+; SI = "|X nom ", BL = lletra, AX = PSP: "|X nom A: dalt 5K"
+gpeca:  push    ax
+        call    dcpy
+        mov     al, bl
+        stosb
+        mov     si, d_dp                ; ": "
+        call    dcpy
+        pop     ax
+        or      ax, ax
+        jnz     .s
+        mov     al, '?'
+        stosb
+        ret
+.s:     mov     si, d_gd                ; "dalt "
+        cmp     ax, [convtop]
+        jae     .w
+        mov     si, d_gb                ; "baix "
+.w:     push    ax
+        call    dcpy
+        pop     ax
+        dec     ax                      ; la mida del bloc (MCB)
+        push    ds
+        mov     ds, ax
+        mov     ax, [3]
+        pop     ds
+        call    dkb
+        call    ddec
+        mov     si, d_k
+        jmp     dcpy
+
+; SI = "|X nom ", BL = lletra, BP = c_par: "|X nom A: dalt 26K baix 0K"
+gcomp:  call    dcpy
+        mov     al, bl
+        stosb
+        mov     si, d_dp
+        call    dcpy
+        mov     si, d_gd
+        call    dcpy
+        mov     ax, [ds:c_par+bp]
+        call    dkb
+        call    ddec
+        mov     si, d_k
+        call    dcpy
+        mov     al, ' '
+        stosb
+        mov     si, d_gb
+        call    dcpy
+        mov     ax, [ds:c_par+bp+2]
+        call    dkb
+        call    ddec
+        mov     si, d_k
+        jmp     dcpy
+
 ; alerta abans de l'appl_exit: on han anat les dades
 alt_sur:
         call    a_ini
@@ -1681,6 +1717,43 @@ alerta: mov     si, d_fi                ; "][ D'acord ]"
         call    far [cs:oldefd]
         ret
 
+; (0.19) on va cada peca ('A' alta, 'B' baixa)
+opt_h   db      0               ; (0.20) GEMHI mateix
+opt_v   db      0               ; GEMVDI
+opt_g   db      0               ; GEM.EXE
+opt_r   db      0               ; el que el GEM demana mentre arrenca
+opt_s   db      0               ; controladors i lletres (.SYS, .FNT)
+vpsp    dw      0               ; PSP de GEMVDI (qui fa el 1r EXEC)
+fpar    dw      0               ; fillg: el pare que es busca
+cls     db      0               ; peticio en curs: 0 R, 1 S, 2 accessori
+s_next  db      0               ; 1: la peticio seguent es la S
+acc_low db      0               ; 1: l'accessori obert vol anar a baix
+g_alt   db      0               ; 1: GEM.EXE carregat a dalt
+dgem    db      0               ; /D: falta l'alerta del GEM
+c_par   dw      0, 0, 0, 0, 0, 0 ; paragrafs: R dalt, R baix, S dalt, S baix, acc
+exg     db      0               ; (0.20) 1: app_exec carrega GEM.EXE
+gv_ctx  times 30 db 0           ; GEM.EXE: gem_ret gem_sp gem_ss, regs, app_sp
+
+; (0.19) AX = bloc que s'acaba de donar (sv_bx paragrafs): el compta
+; per a /D segons la peca (cls) i on ha anat
+compta: push    ax
+        push    bx
+        mov     bl, [cs:cls]
+        xor     bh, bh
+        shl     bx, 1
+        shl     bx, 1                   ; 4 bytes per peca
+        cmp     ax, [cs:convtop]
+        jae     .h
+        inc     bx
+        inc     bx
+.h:     mov     ax, [cs:sv_bx]
+        cmp     bx, 12
+        jae     .x
+        add     [cs:c_par+bx], ax
+.x:     pop     bx
+        pop     ax
+        ret
+
 dbg     db      0               ; /D
 dbg_pend db     0               ; 1: l'aplicacio encara no ha fet appl_init/exit
 dbg_why db      0               ; motiu (d_why)
@@ -1700,6 +1773,15 @@ dio     times 4 dw 0
 dai     times 2 dw 0
 dao     times 2 dw 0
 d_t0    db      '[1][GEMHI: ', 0
+d_g0    db      '[1]', 0
+d_gh    db      '[H GEMHI   ', 0
+d_gv    db      '|V GEMVDI  ', 0
+d_gg    db      '|G GEM.EXE ', 0
+d_gr    db      '|R RSC/mem ', 0
+d_gs    db      '|S SYS/FNT ', 0
+d_dp    db      ': ', 0
+d_gd    db      'dalt ', 0
+d_gb    db      'baix ', 0
 d_mk    db      '|Marca: ', 0
 d_cap   db      'cap', 0
 d_pa    db      'prog Alta,', 0
@@ -1734,73 +1816,6 @@ d_c2    db      'dades', 0
 d_c3    db      'programa i dades', 0
 d_crt   dw      d_c0, d_c1, d_c2, d_c3
 dtext   times 200 db 0
-
-; prog -> ruta completa (unitat:\directori\nom), com la desa el DOS a
-; l'entorn del programa
-absolut:
-        mov     si, prog
-        mov     di, tmp
-        mov     ah, 19h
-        int     21h
-        mov     dl, al                  ; unitat (0 = A)
-        cmp     byte [si+1], ':'
-        jne     .u
-        mov     al, [si]
-        and     al, 0DFh
-        sub     al, 'A'
-        mov     dl, al
-        add     si, 2
-.u:     mov     al, dl
-        add     al, 'A'
-        stosb
-        mov     al, ':'
-        stosb
-        cmp     byte [si], '\'
-        je      .r
-        mov     al, '\'
-        stosb
-        push    si
-        mov     si, di
-        inc     dl
-        mov     ah, 47h                 ; directori actual d'aquella unitat
-        int     21h
-        pop     si
-        jc      .r
-.f:     cmp     byte [di], 0
-        je      .f1
-        inc     di
-        jmp     .f
-.f1:    cmp     byte [di-1], '\'
-        je      .r
-        mov     al, '\'
-        stosb
-.r:     lodsb                           ; la resta de la ruta
-        stosb
-        or      al, al
-        jnz     .r
-        mov     si, tmp
-        mov     di, prog
-.c:     lodsb
-        stosb
-        or      al, al
-        jnz     .c
-        ret
-
-; hi ha algun bloc per sobre de la convencional? CF=1 si no
-hiha_zona:
-        mov     ax, [firstmcb]
-.l:     mov     es, ax
-        cmp     ax, [convtop]
-        jae     .si
-        cmp     byte [es:0], 'Z'
-        je      .no
-        add     ax, [es:3]
-        inc     ax
-        jmp     .l
-.si:    clc
-        ret
-.no:    stc
-        ret
 
 ; "GEMHI: n blocs a la memoria alta (x bytes):" i la llista
 informe:
@@ -1900,6 +1915,377 @@ pdec32: push    bx
         pop     bx
         ret
 
+error:  mov     ah, 9
+        int     21h
+        mov     ax, 4C01h
+        int     21h
+
+t_noexec db     'GEMHI: no s', 27h, 'ha pogut executar el programa.', 13, 10, '$'
+t_inf1  db      13, 10, 'GEMHI: $'
+t_inf2  db      ' blocs a la mem', 95h, 'ria alta ($'
+t_inf3  db      ' bytes):', 13, 10, '$'
+t_sp    db      '  $'
+t_bytes db      ' bytes', 13, 10, '$'
+
+        align   2
+        times   256 db 0                ; pila
+pila:
+fi_resident:
+
+; =====================================================================
+;  (0.20) D'aqui endavant, nomes per arrencar: no es queda a la memoria
+; =====================================================================
+; ---------------------------------------------------------------------
+;  Inici (0.20: no es queda a la memoria). Interruptors, ruta, i GEMHI
+;  a dalt (/H:A) o a baix; despres, llanca (resident).
+; ---------------------------------------------------------------------
+inici:  cld
+        mov     sp, pila
+        mov     [lowpsp], cs
+        mov     si, 81h                 ; interruptors i nom del programa
+.op:    call    salta
+        cmp     byte [si], '/'
+        jne     .opf
+        mov     al, [si+1]
+        and     al, 0DFh
+        cmp     al, 'D'                 ; (0.16) /D: alertes de depuracio
+        jne     .o1
+        mov     byte [dbg], 1
+        add     si, 2
+        jmp     .op
+.o1:    cmp     al, 'A'                 ; (0.21) /A:lletres  /B:lletres
+        je      .o2
+        cmp     al, 'B'
+        jne     .us
+.o2:    cmp     byte [si+2], ':'
+        jne     .us
+        mov     ah, al                  ; AH = 'A' o 'B'
+        add     si, 3
+.o3:    mov     al, [si]                ; les lletres fins a l'espai
+        cmp     al, ' '
+        jbe     .op
+        cmp     al, '/'
+        je      .op
+        and     al, 0DFh
+        mov     di, t_pec               ; "HVGRS"
+        mov     cx, 5
+        push    es
+        push    ds
+        pop     es
+        repne   scasb
+        pop     es
+        jne     .nop                    ; no es cap peca
+        sub     di, t_pec+1             ; 0..4
+        cmp     byte [opt_h+di], 0
+        jne     .rep
+        mov     [opt_h+di], ah
+        inc     si
+        jmp     .o3
+.nop:   mov     [t_np1], al
+        mov     dx, t_nop
+        mov     ah, 9
+        int     21h
+        jmp     .us
+.rep:   mov     [t_rp1], al             ; la mateixa lletra dues vegades
+        mov     dx, t_rep
+        mov     ah, 9
+        int     21h
+        jmp     .us
+.opf:   xor     bx, bx                  ; les cinc, sempre: quines falten?
+        xor     cx, cx
+.f1:    cmp     byte [opt_h+bx], 0
+        jne     .f2
+        or      cx, cx
+        jnz     .f3
+        mov     dx, t_fal
+        mov     ah, 9
+        int     21h
+.f3:    mov     dl, ' '
+        mov     ah, 2
+        int     21h
+        mov     dl, [t_pec+bx]
+        mov     ah, 2
+        int     21h
+        inc     cx
+.f2:    inc     bx
+        cmp     bx, 5
+        jb      .f1
+        jcxz    .f4
+        mov     dx, t_fal2
+        mov     ah, 9
+        int     21h
+        jmp     .us
+.f4:
+        cmp     byte [si], 13
+        jne     .p
+.us:    mov     dx, t_us
+        jmp     error
+.p:     mov     di, prog
+.cn:    lodsb
+        cmp     al, ' '
+        je      .cf
+        cmp     al, 9
+        je      .cf
+        cmp     al, 13
+        je      .cf
+        cmp     al, '/'
+        je      .cf
+        stosb
+        jmp     .cn
+.cf:    dec     si
+        mov     byte [di], 0
+        push    di                      ; ¨extensio?
+        mov     bx, prog
+        xor     dl, dl
+.x:     cmp     bx, di
+        jae     .x2
+        mov     al, [bx]
+        cmp     al, '.'
+        jne     .x1
+        mov     dl, 1
+.x1:    cmp     al, '\'
+        jne     .x1b
+        xor     dl, dl
+.x1b:   inc     bx
+        jmp     .x
+.x2:    pop     di
+        or      dl, dl
+        jnz     .tail
+        push    si                      ; sense extensio: .EXE o .COM
+        mov     si, e_exe
+        call    copia
+        call    existeix
+        jnc     .ext
+        mov     si, e_com
+        call    copia
+        call    existeix
+        jnc     .ext
+        pop     si
+        mov     dx, t_nofile
+        jmp     error
+.ext:   pop     si
+.tail:  mov     di, cmdtail+1           ; la resta de la linia
+        xor     cx, cx
+.t:     lodsb
+        cmp     al, 13
+        je      .te
+        stosb
+        inc     cx
+        jmp     .t
+.te:    mov     al, 13
+        stosb
+        mov     [cmdtail], cl
+        mov     si, cmdtail+1           ; FCB 1 i 2
+        mov     di, fcb1
+        mov     ax, 2901h
+        int     21h
+        mov     di, fcb2
+        mov     ax, 2901h
+        int     21h
+        mov     [pblock+4], cs
+        mov     [pblock+8], cs
+        mov     [pblock+12], cs
+        call    absolut                 ; ruta completa del programa
+        mov     al, [prog]              ; el registre: per si de cas, a l'arrel
+        mov     [logpath], al           ;   de la unitat del GEM...
+        call    rutalog                 ; ...pero millor al costat de GEMHI.COM
+
+        mov     ah, 52h                 ; cadena de blocs i convencional
+        int     21h
+        mov     ax, [es:bx-2]
+        mov     [firstmcb], ax
+        int     12h
+        mov     cl, 6
+        shl     ax, cl
+        mov     [convtop], ax
+        call    hiha_zona
+        jnc     .z
+        mov     dx, t_nozona
+        mov     ah, 9
+        int     21h
+
+.z:     mov     bx, (fi_total-start+100h+15)/16
+        push    cs
+        pop     es
+        mov     ah, 4Ah                 ; nomes el que cal (de moment, tot)
+        int     21h
+
+        cmp     byte [opt_h], 'B'       ; (0.20) /H:B: GEMHI es queda a baix
+        je      .hook
+        call    tapa                    ; GEMHI mateix, a dalt: un bloc
+        mov     bx, (fi_total-start+100h+15)/16
+        mov     ah, 48h
+        int     21h
+        pushf
+        call    destapa
+        popf
+        jc      .hook
+        cmp     ax, [convtop]
+        jae     .cp
+        mov     es, ax                  ; ha anat a baix: no serveix
+        mov     ah, 49h
+        int     21h
+        jmp     short .hook
+.cp:    mov     es, ax                  ; copia (PSP inclos: mateixos
+        xor     si, si                  ;   desplacaments)
+        xor     di, di
+        mov     cx, fi_total-start+100h
+        rep     movsb
+        push    ax
+        mov     ax, .alt
+        push    ax
+        retf                            ; continua al bloc de dalt
+.alt:   cli
+        mov     ax, cs
+        mov     ds, ax
+        mov     es, ax
+        mov     ss, ax
+        mov     sp, pila
+        sti
+        cld
+        mov     [hiseg], ax
+        push    es                      ; (0.19) el bloc de baix, nomes el
+        mov     es, [lowpsp]            ;   PSP: si GEMVDI va a baix (o no
+        mov     bx, 10h                 ;   hi cap a dalt), no hi queda un
+        mov     ah, 4Ah                 ;   forat de 7 KB a sota
+        int     21h
+        pop     es
+        mov     [pblock+4], cs
+        mov     [pblock+8], cs
+        mov     [pblock+12], cs
+        mov     ax, cs
+        dec     ax                      ; el bloc, de moment, de GEMHI
+        mov     es, ax
+        mov     ax, [lowpsp]
+        mov     [es:1], ax
+.hook:  push    cs
+        pop     es
+        mov     ax, 3521h
+        int     21h
+        mov     [old21], bx
+        mov     [old21+2], es
+        mov     dx, int21
+        mov     ax, 2521h
+        int     21h
+        jmp     llanca
+
+; prog -> ruta completa (unitat:\directori\nom), com la desa el DOS a
+; l'entorn del programa
+absolut:
+        mov     si, prog
+        mov     di, tmp
+        mov     ah, 19h
+        int     21h
+        mov     dl, al                  ; unitat (0 = A)
+        cmp     byte [si+1], ':'
+        jne     .u
+        mov     al, [si]
+        and     al, 0DFh
+        sub     al, 'A'
+        mov     dl, al
+        add     si, 2
+.u:     mov     al, dl
+        add     al, 'A'
+        stosb
+        mov     al, ':'
+        stosb
+        cmp     byte [si], '\'
+        je      .r
+        mov     al, '\'
+        stosb
+        push    si
+        mov     si, di
+        inc     dl
+        mov     ah, 47h                 ; directori actual d'aquella unitat
+        int     21h
+        pop     si
+        jc      .r
+.f:     cmp     byte [di], 0
+        je      .f1
+        inc     di
+        jmp     .f
+.f1:    cmp     byte [di-1], '\'
+        je      .r
+        mov     al, '\'
+        stosb
+.r:     lodsb                           ; la resta de la ruta
+        stosb
+        or      al, al
+        jnz     .r
+        mov     si, tmp
+        mov     di, prog
+.c:     lodsb
+        stosb
+        or      al, al
+        jnz     .c
+        ret
+
+; hi ha algun bloc per sobre de la convencional? CF=1 si no
+hiha_zona:
+        mov     ax, [firstmcb]
+.l:     mov     es, ax
+        cmp     ax, [convtop]
+        jae     .si
+        cmp     byte [es:0], 'Z'
+        je      .no
+        add     ax, [es:3]
+        inc     ax
+        jmp     .l
+.si:    clc
+        ret
+.no:    stc
+        ret
+
+; logpath = la carpeta de GEMHI.COM (de l'entorn: despres de les
+; variables, 00 00, una paraula i la ruta del programa) + GEMHI.LOG
+rutalog:
+        push    ds
+        mov     ax, [2Ch]
+        or      ax, ax
+        jz      .x
+        mov     ds, ax
+        xor     si, si
+.v:     cmp     word [si], 0            ; final de les variables
+        je      .p
+        inc     si
+        cmp     si, 7FF0h
+        jb      .v
+        jmp     short .x
+.p:     add     si, 4                   ; 00 00 i el comptador
+        cmp     byte [si], 0            ; (sense ruta: es queda a l'arrel)
+        je      .x
+        mov     di, logpath
+        xor     bx, bx                  ; despres de la darrera '\'
+.c:     lodsb
+        mov     [cs:di], al
+        inc     di
+        cmp     al, '\'
+        jne     .c1
+        mov     bx, di
+.c1:    or      al, al
+        jz      .f
+        cmp     di, logpath+80-12
+        jb      .c
+        mov     byte [cs:logpath+3], 0  ; massa llarga: a l'arrel
+        mov     bx, logpath+3
+.f:     or      bx, bx
+        jnz     .n
+        mov     bx, logpath+3           ; sense '\': a l'arrel
+        mov     byte [cs:logpath+2], '\'
+.n:     push    cs
+        pop     ds
+        mov     si, t_log
+        mov     di, bx
+.k:     lodsb
+        mov     [cs:di], al
+        inc     di
+        or      al, al
+        jnz     .k
+.x:     pop     ds
+        ret
+t_log   db      'GEMHI.LOG', 0
+
+
 salta:  cmp     byte [si], ' '
         je      .s
         cmp     byte [si], 9
@@ -1923,27 +2309,33 @@ existeix:
         int     21h
         ret
 
-error:  mov     ah, 9
-        int     21h
-        mov     ax, 4C01h
-        int     21h
-
 e_exe   db      '.EXE', 0
 e_com   db      '.COM', 0
-t_us    db      'GEMHI 0.18 - Engega el GEM amb el que carrega en arrencar a la', 13, 10
-        db      'mem', 95h, 'ria alta (cal una zona alta enlla', 87h, 'ada: LOADHI /H).', 13, 10, 13, 10
-        db      0E9h, 's:  GEMHI [/D] programa [par', 85h, 'metres]   p. ex.  GEMHI GEMVDI', 13, 10
-        db      '     /D  alertes del GEM amb on va cada aplicaci', 0A2h, ' i per qu', 8Ah, 13, 10, '$'
+t_us    db      'GEMHI 0.21 - Engega el GEM amb les seves peces a la mem', 95h, 'ria alta o', 13, 10
+        db      'a la convencional (zona alta enlla', 87h, 'ada: LOADHI /H).', 13, 10, 13, 10
+        db      0E9h, 's:  GEMHI [/D] /A:lletres /B:lletres programa [par', 85h, 'metres]', 13, 10
+        db      '     /A: a la mem', 95h, 'ria alta      /B: a la baixa (convencional)', 13, 10
+        db      '     H  GEMHI mateix (el que queda a la mem', 95h, 'ria, uns 6,5 KB)', 13, 10
+        db      '     V  GEMVDI', 13, 10
+        db      '     G  GEM.EXE', 13, 10
+        db      '     R  GEM.RSC i mem', 95h, 'ria interna del GEM', 13, 10
+        db      '     S  controladors (AMSTRAD.SYS...) i lletres (.FNT)', 13, 10
+        db      '     /D alertes del GEM amb on va cada pe', 87h, 'a i cada aplicaci', 0A2h, 13, 10
+        db      '     Les cinc lletres, cadascuna a /A: o a /B:. Si una de /A: no', 13, 10
+        db      '     hi cap a dalt, va a baix.', 13, 10
+        db      '     p. ex.  GEMHI /A:HVGRS GEMVDI      GEMHI /A:HVG /B:RS GEMVDI', 13, 10, '$'
+t_pec   db      'HVGRS'
+t_fal   db      'GEMHI: falta on va:$'
+t_fal2  db      '  (cada lletra, a /A: o a /B:)', 13, 10, 13, 10, '$'
+t_nop   db      'GEMHI: '
+t_np1   db      '?'
+        db      ' no ', 82h, 's cap de les peces HVGRS', 13, 10, 13, 10, '$'
+t_rep   db      'GEMHI: la lletra '
+t_rp1   db      '?'
+        db      " hi surt dues vegades", 13, 10, 13, 10, '$'
 t_nofile db     'GEMHI: no trobo el programa.', 13, 10, '$'
-t_noexec db     'GEMHI: no s', 27h, 'ha pogut executar el programa.', 13, 10, '$'
 t_nozona db     'GEMHI: no hi ha zona alta enlla', 87h, 'ada; tot anir', 85h, ' a baix.', 13, 10, '$'
-t_inf1  db      13, 10, 'GEMHI: $'
-t_inf2  db      ' blocs a la mem', 95h, 'ria alta ($'
-t_inf3  db      ' bytes):', 13, 10, '$'
-t_sp    db      '  $'
-t_bytes db      ' bytes', 13, 10, '$'
+tmp     times 80 db 0
 
-        align   2
-        times   384 db 0                ; pila
-pila:
-fi_resident:
+fi_total:
+
