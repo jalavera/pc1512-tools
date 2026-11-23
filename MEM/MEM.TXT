@@ -1,4 +1,4 @@
-MEM per a MS-DOS 3.20                                       versi¢ 0.26
+MEM per a MS-DOS 3.20                                       versi¢ 0.27
 =====================                                       15-11-2026
 
 QuŠ ‚s
@@ -145,6 +145,10 @@ Recomanacions
 
 Historial
 ---------
+0.27 23-11-2026  HIDOS 0.10: les taules a baix (FILES, FCBS, BUFFERS)
+                 surten amb el seu nom i "Datos de sistema" a MEM /D, i
+                 dins MSDOS a MEM /C. La ubicaci¢ "DOS (CONFIG.SYS)"
+                 ara diu "Memoria convencional".
 0.26 20-11-2026  Les opcions tamb‚ accepten el gui¢: -D, -C, -D-G...
                  (abans "Par metro no v lido - -D-G").
 0.25 20-11-2026  La c•pia resident de GEMHI (dins un bloc de GEMVDI) surt

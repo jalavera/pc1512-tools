@@ -1,4 +1,4 @@
-HIDOS per a MS-DOS 3.20                                      versi¢ 0.9
+HIDOS per a MS-DOS 3.20                                      versi¢ 0.12
 
 QuŠ ‚s
 ------
@@ -36,7 +36,7 @@ Requisits
   0.18 diria que /C nom‚s es pot fer servir quan es crea la zona; amb
   la 0.19 diu "LOADHI /C: no va a dalt (pas 2...)" i la part
   transit•ria del COMMAND.COM queda a baix).
-- MEM 0.17 o posterior per veure-ho b‚ (la 0.12 es confon; la 0.13 no
+- MEM 0.27 o posterior per veure-ho b‚ (la 0.12 es confon; la 0.13 no
   sap veure el BIOS a dalt amb /B; la 0.14, els controladors de baix; la 0.15
   no en diu el nom; la 0.16 no detalla els de dalt).
 
@@ -45,11 +45,11 @@ Contingut del disquet
 HIDOS.COM    el programa
 HIDOS.TXT    aquest fitxer
 HIDOS.ASM    el codi font del programa
-HIDOSK.ASM   el codi font del que s'afegeix al DOS.SYS (1.664 bytes)
+HIDOSK.ASM   el codi font del que s'afegeix al DOS.SYS (2.176 bytes)
              nasm -f bin HIDOSK.ASM -o HIDOSK.BIN
              nasm -f bin HIDOS.ASM -o HIDOS.COM
 LOADHI.COM, LOADHI.TXT, LOADHI.ASM, LOADHIT.COM   LOADHI 0.20
-MEM.COM, MEM.TXT, MEM.ASM                         MEM 0.17
+MEM.COM, MEM.TXT, MEM.ASM                         MEM 0.27
 
 Instalúlaci¢
 ------------
@@ -59,7 +59,7 @@ Instalúlaci¢
 3. HIDOS                (o HIDOS /H:inici-final si la RAM ‚s en un altre
                          lloc; vegeu m‚s avall)
    o HIDOS /B           (tamb‚ el BIOS a dalt; vegeu "Compte")
-   Si ja hi tens una versi¢ anterior, HIDOS 0.9 l'actualitza i
+   Si ja hi tens una versi¢ anterior, HIDOS 0.12 l'actualitza i
    conserva la zona (i el /B, des de la 0.3).
 4. Reinicia. En arrencar, abans de l'AUTOEXEC.BAT, surt:
      HIDOS: MS-DOS a la mem•ria superior, BE00-FBFF (BIOS incl•s).
@@ -69,6 +69,60 @@ Instalúlaci¢
 El LOADHI.CFG pot quedar igual. /H: no hi fa res (la zona ja la fa el
 DOS) i /B i /FILES ja no calen: posa els FILES i BUFFERS que vulguis al
 CONFIG.SYS, que van a dalt.
+
+BUFFERS, FILES i FCBS a la mem•ria convencional
+-----------------------------------------------
+Amb HIDOS, les taules que fa el CONFIG.SYS (BUFFERS=, FILES=, FCBS=)
+van a la mem•ria superior. Si a dalt us falta espai (p. ex. per
+carregar-hi un programa que per poc no hi cap), en podeu posar una
+part a baix, nom‚s amb el CONFIG.SYS:
+  BUFFERS=6         6 BUFFERS a dalt (1 ‚s el del nucli)
+  BUFFERSLOW=5      i 5 m‚s a baix: 11 en total
+  FILES=10          10 FILES a dalt (5 s¢n els del nucli)
+  FILESLOW=8        i 8 m‚s a baix: 18 en total
+  FCBS=4,0          els FCBS, a dalt
+  FCBSLOW=4,0       (en lloc de FCBS=) els FCBS, tots a baix
+- BUFFERSLOW=n i FILESLOW=n s¢n de m‚s: s'afegeixen als de BUFFERS= i
+  FILES=, que continuen a dalt. Podeu posar-ne tants com vulgueu a
+  cada lloc (BUFFERS i BUFFERSLOW fins a 99 cadascun; FILES i
+  FILESLOW junts, fins a 255).
+- Els FCBS no es poden partir: el DOS 3.20 en fa una sola taula. Amb
+  FCBSLOW=n,m va tota a baix.
+- Sense zona alta (o si no ‚s RAM), els de ...LOW van amb els altres
+  (tot a baix, com sempre).
+- Amb el DOS.SYS original (sense HIDOS), el DOS pren BUFFERSLOW= per
+  BUFFERS= (nom‚s mira el principi de la paraula) i val l'£ltim que
+  hi hagi: poseu les l¡nies ...LOW abans de les normals i, sense
+  HIDOS, quedar… BUFFERS= i FILES=.
+Tamb‚, sense tocar el CONFIG.SYS, HIDOS pot passar a baix les taules
+senceres de BUFFERS=, FILES= i FCBS=:
+    HIDOS /L:B           els BUFFERS= a baix
+    HIDOS /L:BFC         els tres (B = BUFFERS, F = FILES, C = FCBS)
+    HIDOS /L-            tots tres a dalt
+  HIDOS sense res diu quines hi ha a baix.
+Els 5 FILES, l'1 BUFFER i l'FCB que porta el DOS de sŠrie s¢n dins el
+nucli i van amb ell (a dalt). Cada taula a baix va en un bloc de
+mem•ria seu (com els DEVICE=) i MEM /D (0.27) la mostra:
+   00B80-00D3F      448 (0K)  FILES        Datos de sistema
+   00D40-0179F    2.656 (3K)  BUFFERS      Datos de sistema
+i a la llista de BUFFERS, FILES i FCB diu on ‚s cada tros:
+   00D50-0179F    2.640    5  BUFFERS   Memoria convencional
+   C7210-C7C5F    2.640    5  BUFFERS   Memoria superior
+QuŠ ocupa cada cosa: un BUFFER uns 530 bytes, un FILE 53 i un FCB 53
+(i 16 bytes per bloc). Funcionen igual a baix que a dalt: no ‚s m‚s
+r…pid ni m‚s lent.
+
+L'intŠrpret (SHELL=) a la mem•ria convencional: /S-
+---------------------------------------------------
+Per defecte, mentre s'engega l'intŠrpret del SHELL= (LOADHI i
+COMMAND.COM) la mem•ria convencional queda reservada, i aix¡ van tots
+dos a dalt. Amb HIDOS /S- no es reserva, i es carreguen com sense
+HIDOS:
+  amb SHELL=LOADHI ... /C  LOADHI a baix (2 KB) i COMMAND.COM a dalt
+  amb SHELL=LOADHI ... (sense /C)    LOADHI i COMMAND.COM a baix
+  amb SHELL=COMMAND.COM ...          COMMAND.COM a baix
+LOADHI 0.21 o posterior (la 0.20 sense /C es quedava tota la
+convencional). HIDOS /S torna a la reserva. HIDOS sol diu si hi ha /S-.
 
 Comentaris al CONFIG.SYS: REM
 -----------------------------
@@ -130,6 +184,10 @@ que no ‚s un AT. Per tenir el disc a dalt, DEVICEHIGH= sense /E.
   HIDOS /B              tamb‚ el BIOS del DOS.SYS a dalt (es pot combinar
                         amb /H:; si el peda‡ ja hi ‚s, nom‚s ho activa)
   HIDOS /B-             torna a deixar el BIOS a baix (la resta, a dalt)
+  HIDOS /L:BFC          BUFFERS, FILES i/o FCBS a la mem•ria convencional
+  HIDOS /L-             totes tres a dalt
+  HIDOS /S-             l'intŠrpret (SHELL=) pot anar a la convencional
+  HIDOS /S              torna a reservar-la (a dalt, per defecte)
   HIDOS /H:C000-FBFF    zona de RAM superior que es fa servir (segments
                         en hexadecimal, l'£ltim incl•s). Si el peda‡ ja
                         hi ‚s, nom‚s canvia la zona.
@@ -148,7 +206,7 @@ Com funciona
 ------------
 En arrencar, el DOS.SYS (el BIOS del DOS de Microsoft) carrega el
 MSDOS.SYS i el SYSINIT el copia "darrere el BIOS" i el posa en marxa.
-HIDOS canvia uns 30 bytes del DOS.SYS en 11 llocs i hi afegeix 1.664 bytes al
+HIDOS canvia uns 30 bytes del DOS.SYS en 11 llocs i hi afegeix 2.176 bytes al
 final:
 - Si tota la zona ‚s RAM, el SYSINIT es creu que la mem•ria acaba al
   final de la zona: s'hi colúloca ell mateix, hi copia el nucli (al
@@ -183,7 +241,7 @@ final:
   el DOS original la pren per DEVICE, perquŠ nom‚s en compara el
   principi). Canvia l'INT 12h mentre s'executa l'ordre i despr‚s
   torna a posar la d'abans.
-El DOS.SYS passa de 16235 a 17904 bytes; el carregador de l'IOPATCH el
+El DOS.SYS passa de 16235 a 18416 bytes; el carregador de l'IOPATCH el
 llegeix sencer. L'IO.SYS i el MSDOS.SYS no es toquen.
 
 Compte
@@ -213,6 +271,19 @@ Compte
 
 Historial
 ---------
+0.12 23-11-2026  /S-: sense reservar la mem•ria convencional mentre
+                 s'engega l'intŠrpret (LOADHI i COMMAND.COM a baix si
+                 es vol). Actualitza un DOS.SYS de la 0.11.
+0.11 23-11-2026  BUFFERSLOW=n i FILESLOW=n ara s¢n de m‚s: n BUFFERS o
+                 FILES a baix, a m‚s dels de BUFFERS= i FILES= a dalt
+                 (es poden posar a voluntat a tots dos llocs, nom‚s
+                 amb el CONFIG.SYS). FCBSLOW= continua passant tots els
+                 FCBS a baix. Actualitza un DOS.SYS de la 0.10 (i en
+                 conserva el /L).
+0.10 22-11-2026  BUFFERS, FILES i FCBS a la mem•ria convencional, si cal
+                 espai a dalt: BUFFERSLOW=, FILESLOW= i FCBSLOW= al
+                 CONFIG.SYS, o HIDOS /L:BFC (/L-: no). Actualitza un
+                 DOS.SYS de la 0.9.
 0.9  20-11-2026  REM al CONFIG.SYS: les l¡nies de comentari no fan res
                  (abans: "Comando irreconocible"). Actualitza un
                  DOS.SYS de la 0.8.

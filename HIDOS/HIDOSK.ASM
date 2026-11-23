@@ -24,10 +24,20 @@ bmoved  db      0                       ; +18h  1 = el BIOS s'ha copiat
         jmp     near bioshi             ; +19h  entrada del DOS.SYS (/B)
         jmp     near dhook              ; +1Ch  ordres del CONFIG.SYS
         jmp     near nhook              ; +1Fh  segÅent l°nia del CONFIG
-; +22h  paraules del CONFIG.SYS: DEVICEHIGH (lletra 'h') i les de sempre
-; (abans que DEVICE, que si no ja la trobaria: es compara el principi)
+lowtab  db      0                       ; +22h  taules a baix: 1 FILES,
+                                        ;       2 FCBS, 4 BUFFERS (HIDOS /L:);
+                                        ;       8: intärpret a baix (/S-)
+        jmp     near hkfil              ; +23h  abans dels FILES
+        jmp     near hkfcb              ; +26h  abans dels FCBS
+        jmp     near hkbuf              ; +29h  abans dels BUFFERS
+        jmp     near hkend              ; +2Ch  desprÇs dels BUFFERS
+; +2Fh  paraules del CONFIG.SYS: les noves i les de sempre (les noves,
+; abans: es compara el principi de la paraula)
 ctab    db      10,'DEVICEHIGH','h'
         db      3,'REM','r'             ; comentaris (com el DOS 4)
+        db      10,'BUFFERSLOW','b'     ; BUFFERS mÇs, a la convencional
+        db      8,'FILESLOW','f'        ; FILES mÇs, a baix
+        db      7,'FCBSLOW','x'         ; els FCBS, a baix
         db      07h,42h,55h,46h,46h,45h,52h,53h,42h,05h,42h,52h,45h,41h
         db      4Bh,43h,06h,44h,45h,56h,49h,43h,45h,44h,05h,46h,49h,4Ch
         db      45h,53h,46h,04h,46h,43h,42h,53h,58h,09h,4Ch,41h,53h,54h
@@ -35,6 +45,8 @@ ctab    db      10,'DEVICEHIGH','h'
         db      4Dh,50h,05h,53h,54h,41h,43h,4Bh,4Bh,07h,43h,4Fh,55h,4Eh
         db      54h,52h,59h,51h,05h,53h,48h,45h,4Ch,4Ch,53h,00h
 lowon   db      0                       ; 1 = carregant un DEVICE a baix
+nbuflo  db      0                       ; BUFFERSLOW=
+nfillo  db      0                       ; FILESLOW=
 sv5c    dw      0                       ; on anava el segÅent controlador
 sv5e    dw      0                       ;   (a dalt) mentrestant
 mcbseg  dw      0                       ; DEVICE a baix: el seu bloc (MCB)
@@ -193,7 +205,10 @@ link:   call    msg                     ; diu on Çs el DOS
         push    es
         ; ---- el ganxo, a dalt (la cadena encara nomÇs Çs de dalt) ----
         mov     byte [cs:hkok],0
-        mov     ah,48h
+        test    byte [cs:lowtab],8      ; /S-: l'intärpret pot anar a baix
+        jz      .hk                     ;   (sense reserva)
+        jmp     .nohk
+.hk:    mov     ah,48h
         mov     bx,(HKSZ+15)/16
         int     21h
         jc      .nohk
@@ -282,7 +297,29 @@ hkok    db      0
 dhook:  cmp     ah,'r'                  ; REM: res, a la l°nia segÅent
         jne     .nr
         jmp     near 05C9h
-.nr:    cmp     ah,'D'
+.nr:    cmp     ah,'b'                  ; BUFFERSLOW=n: n BUFFERS mÇs, a
+        jne     .nb                     ;   la memïria convencional
+        call    near 0C2Fh              ; (el n£mero, com BUFFERS=)
+        jc      .er
+        cmp     ax,100
+        jae     .er
+        mov     [cs:nbuflo],al
+        jmp     near 05C9h
+.er:    jmp     near 0539h              ; "Comando irreconocible..."
+.nb:    cmp     ah,'f'                  ; FILESLOW=n: n FILES mÇs, a baix
+        jne     .nf
+        call    near 0C2Fh
+        jc      .er
+        cmp     ax,0100h
+        jae     .er
+        mov     [cs:nfillo],al
+        jmp     near 05C9h
+.nf:    cmp     ah,'x'                  ; FCBSLOW=n,m: els FCBS, a baix
+        jne     .nx
+        or      byte [cs:lowtab],2
+        mov     ah,'X'
+        jmp     near 08E4h
+.nx:    cmp     ah,'D'
         je      .low
         cmp     ah,'h'
         je      .high
@@ -309,20 +346,256 @@ dhook:  cmp     ah,'r'                  ; REM: res, a la l°nia segÅent
         jmp     short .d
 .low:   cmp     byte [cs:hion],0        ; sense zona alta, com sempre
         je      .d
-        push    ax
+        call    lowbeg
+        call    getname
+.d:     jmp     near 061Eh
+
+; ---- lowbeg: el que el SYSINIT posi ara al punter [5Eh]:[5Ch] anirÖ a
+; la memïria convencional, en un bloc seu (a lowseg; el nom a mcbname)
+lowbeg: push    ax
         mov     ax,[cs:5Ch]
         mov     [cs:sv5c],ax
         mov     ax,[cs:5Eh]
         mov     [cs:sv5e],ax
         mov     word [cs:5Ch],0
-        mov     ax,[cs:lowseg]          ; el bloc a lowseg, el controlador
+        mov     ax,[cs:lowseg]          ; el bloc a lowseg, el contingut
         mov     [cs:mcbseg],ax          ;   al parÖgraf segÅent
         inc     ax
         mov     [cs:5Eh],ax
         mov     byte [cs:lowon],1
-        call    getname
         pop     ax
-.d:     jmp     near 061Eh
+        ret
+
+; ---- lowend: tanca el bloc de baix (si s'hi ha posat alguna cosa) i
+; el punter torna a dalt
+lowend: cmp     byte [cs:lowon],0
+        jne     .s
+        ret
+.s:     push    ds
+        push    cs
+        pop     ds
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    di
+        push    es
+        mov     ax,[5Ch]                ; final (parÖgraf)
+        add     ax,15
+        mov     cl,4
+        shr     ax,cl
+        add     ax,[5Eh]
+        mov     bx,[mcbseg]
+        mov     cx,ax
+        sub     cx,bx
+        dec     cx                      ; CX = mida (parÖgrafs)
+        jle     .nf                     ; no s'hi ha posat res
+        mov     [lowseg],ax
+        mov     es,bx                   ; el bloc: 'M', 0008h, mida, nom
+        mov     byte [es:0],'M'
+        mov     word [es:1],8
+        mov     [es:3],cx
+        mov     word [es:5],0
+        mov     byte [es:7],0
+        mov     si,mcbname
+        mov     di,8
+        mov     cx,4
+.cp:    mov     ax,[si]
+        mov     [es:di],ax
+        add     si,2
+        add     di,2
+        loop    .cp
+        cmp     word [firstlow],0
+        jne     .rs
+        mov     [firstlow],bx
+        jmp     short .rs
+.nf:    mov     [lowseg],bx             ; (el lloc queda lliure)
+.rs:    mov     ax,[sv5c]
+        mov     [5Ch],ax
+        mov     ax,[sv5e]
+        mov     [5Eh],ax
+        mov     byte [lowon],0
+        pop     es
+        pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        pop     ax
+        pop     ds
+        ret
+
+; ---- les taules (FILES, FCBS, BUFFERS) a baix si ho diu lowtab ----
+; Els ganxos van on el SYSINIT, acabat el CONFIG.SYS, les posa al
+; punter: 0339h (call 0BCAh abans dels FILES), 0384h (abans dels FCBS),
+; 03EBh (cmp [1Ah],-1, abans dels BUFFERS) i 0496h (desprÇs).
+hkfil:  call    near 0BCAh
+        push    ax
+        push    si
+        mov     al,1
+        mov     si,n_files
+        jmp     short hkx
+hkfcb:  call    lowend
+        call    filelo                  ; FILESLOW: una taula mÇs, a baix
+        call    near 0BCAh
+        push    ax
+        push    si
+        mov     al,2
+        mov     si,n_fcbs
+hkx:    call    tabbeg
+        pop     si
+        pop     ax
+        ret
+hkbuf:  call    lowend
+        push    ax
+        push    si
+        mov     al,4
+        mov     si,n_bufs
+        call    tabbeg
+        pop     si
+        pop     ax
+        cmp     word [cs:1Ah],byte -1   ; (el que hi havia)
+        ret
+hkend:  call    lowend
+        call    buflo                   ; BUFFERSLOW: mÇs BUFFERS, a baix
+        call    near 0BCAh
+        ret
+
+; ---- FILESLOW=n: una taula de n FILES (SFT) a baix, al final de la
+; cadena de taules del DOS (en total, com a molt 255)
+filelo: cmp     byte [cs:nfillo],0
+        jne     .s
+        ret
+.s:     push    ds
+        push    es
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    di
+        mov     al,[cs:nfillo]
+        xor     ah,ah
+        mov     bl,[cs:1Ch]             ; FILES= (5 si no n'hi ha)
+        xor     bh,bh
+        cmp     bx,5
+        jae     .t
+        mov     bx,5
+.t:     mov     cx,255
+        sub     cx,bx
+        cmp     ax,cx
+        jbe     .t1
+        mov     ax,cx
+.t1:    or      ax,ax
+        jz      .x
+        push    ax
+        mov     si,n_files
+        mov     al,1
+        call    tabbeg1                 ; (a baix si hi ha zona alta)
+        call    near 0BCAh
+        pop     cx                      ; CX = quants
+        les     di,[cs:5Ch]
+        mov     word [es:di],0FFFFh     ; la taula: final de cadena,
+        mov     word [es:di+2],0FFFFh   ;   quants, i les entrades a 0
+        mov     [es:di+4],cx
+        mov     ax,35h
+        mul     cx
+        add     ax,6
+        add     [cs:5Ch],ax
+        push    di
+        push    cx
+        mov     cx,ax
+        sub     cx,6
+        add     di,6
+        xor     al,al
+        cld
+        rep     stosb
+        pop     cx
+        pop     di
+        mov     bx,es                   ; BX:DI = la taula nova
+        lds     si,[cs:3]               ; la £ltima taula del DOS
+        lds     si,[si+4]
+.w:     cmp     word [si],0FFFFh
+        je      .wl
+        lds     si,[si]
+        jmp     .w
+.wl:    mov     [si],di
+        mov     [si+2],bx
+        call    lowend
+.x:     pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        pop     ax
+        pop     es
+        pop     ds
+        ret
+
+; ---- BUFFERSLOW=n: n BUFFERS mÇs, a baix (com fa el SYSINIT: cada un,
+; capáalera de 16 bytes + un sector, al principi de la cadena)
+buflo:  cmp     byte [cs:nbuflo],0
+        jne     .s
+        ret
+.s:     push    ds
+        push    es
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    di
+        mov     si,n_bufs
+        mov     al,4
+        call    tabbeg1
+        mov     cl,[cs:nbuflo]
+        xor     ch,ch
+.l:     push    cx
+        call    near 0BCAh
+        les     di,[cs:5Ch]
+        lds     bx,[cs:3]
+        mov     ax,[bx+12h]             ; el primer d'ara, darrere
+        mov     [es:di],ax
+        mov     ax,[bx+14h]
+        mov     [es:di+2],ax
+        mov     [bx+12h],di
+        mov     [bx+14h],es
+        mov     word [es:di+4],0FFh     ; (lliure)
+        mov     ax,[bx+10h]             ; mida del sector
+        add     ax,10h
+        add     [cs:5Ch],ax
+        pop     cx
+        loop    .l
+        call    lowend
+        pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        pop     ax
+        pop     es
+        pop     ds
+        ret
+; AL = bit de lowtab, SI = nom: si toca, comenáa el bloc de baix
+tabbeg: test    [cs:lowtab],al
+        jz      tabr
+; SI = nom: comenáa el bloc de baix (si hi ha zona alta)
+tabbeg1:
+        cmp     byte [cs:hion],0
+        je      tabr
+        push    ax
+        push    cx
+        push    di
+        mov     di,mcbname
+        mov     cx,8
+.c:     mov     al,[cs:si]
+        mov     [cs:di],al
+        inc     si
+        inc     di
+        loop    .c
+        pop     di
+        pop     cx
+        pop     ax
+        call    lowbeg
+tabr:   ret
+n_files db      'FILES',0,0,0
+n_fcbs  db      'FCBS',0,0,0,0
+n_bufs  db      'BUFFERS',0
 
 ; DEVICE= o DEVICEHIGH= a dalt: un parÖgraf de capáalera davant del
 ; controlador, com els subblocs del DOS 4 ('D', inici, mida, nom), per
@@ -456,58 +729,7 @@ nhook:  push    cs
         pop     cx
         pop     bx
         pop     ax
-.l0:    cmp     byte [lowon],0
-        je      .c
-        push    ax
-        push    bx
-        push    cx
-        push    si
-        push    di
-        push    es
-        mov     ax,[5Ch]                ; final del controlador (parÖgraf)
-        add     ax,15
-        mov     cl,4
-        shr     ax,cl
-        add     ax,[5Eh]
-        mov     bx,[mcbseg]
-        mov     cx,ax
-        sub     cx,bx
-        dec     cx                      ; CX = mida (parÖgrafs)
-        jle     .nf                     ; no s'ha carregat: res
-        mov     [lowseg],ax
-        mov     es,bx                   ; el bloc: 'M', 0008h, mida, nom
-        mov     byte [es:0],'M'
-        mov     word [es:1],8
-        mov     [es:3],cx
-        mov     word [es:5],0
-        mov     byte [es:7],0
-        mov     si,mcbname
-        mov     di,8
-        mov     cx,4
-        push    es
-        pop     es
-        cld
-.cp:    mov     ax,[si]
-        mov     [es:di],ax
-        add     si,2
-        add     di,2
-        loop    .cp
-        cmp     word [firstlow],0
-        jne     .rs
-        mov     [firstlow],bx
-        jmp     short .rs
-.nf:    mov     [lowseg],bx             ; (el lloc queda lliure)
-.rs:    mov     ax,[sv5c]
-        mov     [5Ch],ax
-        mov     ax,[sv5e]
-        mov     [5Eh],ax
-        mov     byte [lowon],0
-        pop     es
-        pop     di
-        pop     si
-        pop     cx
-        pop     bx
-        pop     ax
+.l0:    call    lowend
 .c:     call    near 0B90h
         ret
 

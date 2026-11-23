@@ -4,6 +4,7 @@
 ;               Versio 2.2: taula i ratoli en blocs a part; tot es pot
 ;               carregar, treure i moure amb KEYBX ja resident
 ;               Versio 2.3: amb LOADHI, la taula i el ratoli tambe van a dalt
+;               Versio 2.4: a baix, el nom al bloc de memoria (MEM)
 ;
 ;  Muntatge:   nasm -f bin KEYBX.ASM -o KEYBX.COM
 ;
@@ -1990,6 +1991,13 @@ install:
         mov     ah,49h
         int     21h
         mov     word [2Ch],0
+        mov     ax,cs                   ; i posa el nom al bloc (com el
+        dec     ax                      ;   DOS 4): sense entorn, MEM
+        mov     es,ax                   ;   no el sabria
+        mov     word [es:8],'KE'
+        mov     word [es:10],'YB'
+        mov     word [es:12],'X'
+        mov     word [es:14],0
         cmp     byte [wantpop],0
         je      .lp
         push    cs
@@ -4051,7 +4059,7 @@ cfghdr      db  `; KEYBX.CFG - generat amb KEYBX /A\r\n`
             db  `;        AGUT GREU CIRC DIER (tecles mortes), NUL\r\n`
 CFGHDRLEN   equ $-cfghdr
 
-m_banner    db  `KEYBX 2.3 - remapejador de teclat i ratol\xA1 per a DOS (8086)\r\n$`
+m_banner    db  `KEYBX 2.4 - remapejador de teclat i ratol\xA1 per a DOS (8086)\r\n$`
 m_help      db  `\r\n`
             db  `KEYBX [fitxer.cfg] [/437|/850|/GEM] [/P:xx] [/M[:n]] [/H:seg [/F]]\r\n`
             db  `KEYBX /A [fitxer.cfg]   aprenentatge: genera el .CFG\r\n`

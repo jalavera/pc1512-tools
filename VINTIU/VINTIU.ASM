@@ -193,6 +193,7 @@ inici:
         mov word [addr_in], 0
         mov word [addr_in+2], 0
         AES 78,1,1,1,0
+        call fes_menu                   ; barra de menus (accessoris)
 
         ; mides que depenen de la lletra
         mov ax, [car_h]
@@ -925,7 +926,10 @@ evnt:   mov [int_in], ax
         ret
 
 handle_msg:
-        mov ax, [msgbuf+6]
+        cmp word [msgbuf], 10           ; MN_SELECTED (menu)
+        jne .w
+        jmp menu_msg
+.w:     mov ax, [msgbuf+6]
         cmp ax, [whandle]
         jne .r
         mov ax, [msgbuf]
@@ -992,6 +996,7 @@ get_work:                               ; area de treball i origen del contingut
 
 ; ---- sortida (boto de tancar)
 sortir: call so_off
+        call treu_menu
         call posa_wh
         AES 102,1,1,0,0                 ; wind_close
         call posa_wh
@@ -1000,6 +1005,62 @@ vdi_fi: VDI 101,0,0                     ; v_clsvwk
 aes_fi: AES 19,0,1,0,0                  ; appl_exit
 dos_fi: mov ax, 4C00h
         int 21h
+
+
+; =====================================================================
+;  BARRA DE MENUS: nomes el menu del programa, amb "Quant a" i els
+;  accessoris del GEM (el GEM hi posa els noms dels .ACC; sense barra
+;  de menus no s'hi pot arribar)
+; =====================================================================
+fes_menu:
+        mov si, menutree
+        xor bx, bx
+.l:     mov al, [si+6]                  ; ob_type
+        cmp al, 28                      ; G_STRING
+        je .seg
+        cmp al, 32                      ; G_TITLE
+        jne .fix
+.seg:   mov [si+14], ds                 ; ob_spec: segment del text
+.fix:   mov [int_in], bx
+        mov word [addr_in], menutree
+        mov [addr_in+2], ds
+        push si
+        push bx
+        AES 114,1,1,1,0                 ; rsrc_obfix
+        pop bx
+        pop si
+        test byte [si+8], 20h           ; LASTOB
+        jnz .fi
+        add si, 24
+        inc bx
+        jmp .l
+.fi:    mov word [int_in], 1
+        mov word [addr_in], menutree
+        mov [addr_in+2], ds
+        AES 30,1,1,1,0                  ; menu_bar(arbre, 1)
+        ret
+
+treu_menu:
+        mov word [int_in], 0
+        mov word [addr_in], menutree
+        mov [addr_in+2], ds
+        AES 30,1,1,1,0                  ; menu_bar(arbre, 0)
+        ret
+
+; msgbuf = MN_SELECTED: el titol torna a normal i, si es "Quant a", ho diu
+menu_msg:
+        mov ax, [msgbuf+6]
+        mov [int_in], ax
+        mov word [int_in+2], 1
+        mov word [addr_in], menutree
+        mov [addr_in+2], ds
+        AES 33,2,1,1,0                  ; menu_tnormal
+        cmp word [msgbuf+8], 6
+        jne .r
+        mov ax, 1
+        mov si, al_quant
+        call alerta
+.r:     ret
 
 ; ---- form_alert: AX = boto per defecte, SI = text. Torna AX = boto premut
 alerta: push bx
@@ -2312,6 +2373,35 @@ init_punters:
 ;  DADES
 ; =====================================================================
 titol:  db ' Vint-i-u Enhanced ', 0
+; ---- arbre de la barra de menus (coordenades en caracters; rsrc_obfix)
+;      next, head, tail, tipus, flags, estat, ob_spec (2 paraules), x, y, w, h
+        align 2
+menutree:
+        dw -1, 1, 4, 25, 0, 0, 0, 0, 0, 0, 80, 25                ; 0
+        dw 4, 2, 2, 20, 0, 0, 1100h, 0, 0, 0, 80, 0201h          ; 1
+        dw 1, 3, 3, 25, 0, 0, 0, 0, 2, 0, 10, 0301h             ; 2
+        dw 2, -1, -1, 32, 0, 0, t_mtit, 0, 0, 0, 10, 0301h      ; 3
+        dw 0, 5, 5, 25, 0, 0, 0, 0, 0, 0301h, 80, 19             ; 4
+        dw 4, 6, 13, 20, 0, 0, 1100h, 0FFh, 2, 0, 22, 8          ; 5
+        dw 7, -1, -1, 28, 0, 0, mt_quant, 0, 0, 0, 22, 1         ; 6
+        dw 8, -1, -1, 28, 0, 8, m_sep22, 0, 0, 1, 22, 1          ; 7
+        dw 9, -1, -1, 28, 0, 0, m_acc1, 0, 0, 2, 22, 1           ; 8
+        dw 10, -1, -1, 28, 0, 0, m_acc2, 0, 0, 3, 22, 1          ; 9
+        dw 11, -1, -1, 28, 0, 0, m_acc3, 0, 0, 4, 22, 1          ; 10
+        dw 12, -1, -1, 28, 0, 0, m_acc4, 0, 0, 5, 22, 1          ; 11
+        dw 13, -1, -1, 28, 0, 0, m_acc5, 0, 0, 6, 22, 1          ; 12
+        dw 5, -1, -1, 28, 20h, 0, m_acc6, 0, 0, 7, 22, 1         ; 13
+t_mtit: db ' Vint-i-u ', 0
+mt_quant: db '  Quant a Vint-i-u... ', 0
+m_sep22: db '----------------------', 0
+m_acc1: db '  Desk Accessory      ', 0
+m_acc2: db '  Desk Accessory      ', 0
+m_acc3: db '  Desk Accessory      ', 0
+m_acc4: db '  Desk Accessory      ', 0
+m_acc5: db '  Desk Accessory      ', 0
+m_acc6: db '  Desk Accessory      ', 0
+al_quant: db "[1][VINT-I-U ENHANCED 0.2| |Per al GEM 2.0 (Amstrad PC1512).|Port del joc del VIC-20.][D'acord]", 0
+
 rankch: db 'A234567890JQK'
 deu:    db '10'
 

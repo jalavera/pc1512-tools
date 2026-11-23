@@ -1,4 +1,4 @@
-LOADHI per a MS-DOS 3.x                                     versi¢ 0.20
+LOADHI per a MS-DOS 3.x                                     versi¢ 0.22
 
 Quä Çs
 ------
@@ -312,8 +312,31 @@ i cal posar /H:C000-FBFF.
 LOADHI no deixa crear la zona a BC00-BFFF si hi ha el mirall del v°deo
 (ho diu i carrega l'intärpret d'ordres a baix).
 
+Programes que n'executen d'altres
+---------------------------------
+Mentre LOADHI carrega un programa a dalt, tapa la memïria convencional.
+Si el programa n'executa d'altres (un men£ com APPHI, un .BAT, el
+GEM...), a la primera ordre d'executar que fa, LOADHI la destapa: els
+programes que executa van a la memïria convencional, com sempre. Per
+aixï LOADHI posa un ganxo petit a la INT 21h; si el programa es queda
+resident i s'hi posa al davant, el ganxo queda desactivat i ocupa 48
+bytes a dalt ("LOADHI", del sistema).
+  LOADHI APPHI      APPHI a dalt; el GEM i les aplicacions que obre, a
+                    baix
+
 Historial
 ---------
+LOADHI 0.22 23-11-2026  Un programa carregat a dalt que n'executa d'altres
+                        (APPHI amb Intro, un .BAT...) els deixava sense
+                        memïria convencional: continuava tapada fins que
+                        el programa acabava. Ara es destapa al primer EXEC
+                        que fa el programa. (Amb APPHI a dalt, les
+                        aplicacions del GEM no s'obrien.)
+LOADHI 0.21 23-11-2026  Com a SHELL= amb la zona ja feta (HIDOS /S-) i
+                        sense /C, l'intärpret es carregava com un programa
+                        normal i LOADHI es quedava tota la memïria
+                        convencional. Ara fa el mateix que quan crea la
+                        zona: amb /C, COMMAND.COM a dalt; sense, a baix.
 LOADHI 0.20 19-11-2026  Amb HIDOS 0.2 o posterior, /C deia "no va a
                         dalt (pas 2, codi 0008h)" i deixava la part
                         transitïria del COMMAND.COM a baix: la memïria

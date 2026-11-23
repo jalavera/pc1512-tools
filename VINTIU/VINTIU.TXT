@@ -1,4 +1,4 @@
-VINTIU - Vint-i-u Enhanced per al GEM 2.0 (Amstrad PC1512)   versi¢ 0.1
+VINTIU - Vint-i-u Enhanced per al GEM 2.0 (Amstrad PC1512)   versi¢ 0.2
 =======================================================================
 
 Versi¢ per al GEM Desktop 2.0 del joc Vint-i-u Enhanced del VIC-20
@@ -22,6 +22,8 @@ la banca. Es comen‡a amb 100 fitxes.
   P  Plantar-se  (amb 16 punts o m‚s)
 Les tres opcions tamb‚ es poden clicar amb el ratol¡. L'aposta s'escriu
 amb les xifres i Retorn. El bot¢ de tancar de la finestra surt del joc.
+A la barra de men£s, "Vint-i-u" t‚ "Quant a" i els accessoris del GEM
+(CHARMAP, EINES...).
 
 REQUISITS
 ---------
@@ -36,4 +38,5 @@ a la mateixa carpeta.
 
 HISTORIAL
 ---------
+0.2   Barra de men£s amb els accessoris del GEM.
 0.1   Primera versi¢ publicada.

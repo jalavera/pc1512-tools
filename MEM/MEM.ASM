@@ -1,5 +1,5 @@
 ; =====================================================================
-;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.26
+;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.27
 ;
 ;  Substitut de MEM 6.22 que ent‚n les estructures de DOS 3.x:
 ;  - noms de programa tret de l'entorn (DOS 3 no els desa al MCB)
@@ -2787,6 +2787,28 @@ drvname:
         pop     ax
         ret
 
+; nbuf ‚s FILES, FCBS o BUFFERS (taules que HIDOS posa a baix)? CF=0
+istab:  push    si
+        push    di
+        mov     di,s_k_fil
+        call    .c
+        jnc     .r
+        mov     di,s_k_fcb
+        call    .c
+        jnc     .r
+        mov     di,s_k_buf
+        call    .c
+.r:     pop     di
+        pop     si
+        ret
+.c:     mov     si,nbuf
+        call    strcmp
+        je      .y
+        stc
+        ret
+.y:     clc
+        ret
+
 ; BX = ¡ndex de bloc -> SI = text del tipus
 blk_type:
         push    ax
@@ -2830,10 +2852,12 @@ blk_type:
         shr     bx,1
         push    word [nbuf]             ; (drvname escriu a nbuf)
         call    drvname
-        pop     word [nbuf]
         mov     si,s_t_sysdata
-        jc      .e
+        jc      .t0
+        call    istab                   ; FILES, FCBS, BUFFERS (HIDOS):
+        jnc     .t0                     ;   dades del sistema
         mov     si,s_t_device
+.t0:    pop     word [nbuf]
         jmp     .e
 .t1:
         mov     si,s_t_prog
@@ -3197,7 +3221,18 @@ build_modules:
         je      .n
         mov     dl,[blk_reg+bx]
         call    blk_name
-        push    bx
+        cmp     cx,8                    ; FILES/FCBS/BUFFERS de HIDOS: s¢n
+        jne     .bn                     ;   del DOS (MSDOS)
+        call    istab
+        jc      .bn
+        push    si
+        push    di
+        mov     si,s_msdos
+        mov     di,nbuf
+        call    strcpy
+        pop     di
+        pop     si
+.bn:    push    bx
         call    find_mod
         shl     bx,1
         or      dl,dl
@@ -4802,7 +4837,7 @@ s_k_fil db      'FILES',0
 s_k_fcb db      'FCBS',0
 s_o_dos db      'DOS (interno)',0
 s_o_up  db      'Memoria superior',0
-s_o_conv db     'DOS (CONFIG.SYS)',0
+s_o_conv db     'Memoria convencional',0
 s_dbg_title db  'Informe detallado de memoria convencional:',0
 s_dbg_h db      '   Direcci¢n             Tama¤o programa   Nombre       Tipo',0
 s_dbg_d db      '   -----------           ----------------  -----------  ---------',0
@@ -4891,7 +4926,7 @@ help_txt:
         db      '  /G              Dentro del GEM: muestra qu‚ archivos del GEM busca',0
         db      '                  en la memoria y d¢nde los encuentra.',0
         db      0
-        db      'MEM 0.26 para MS-DOS 3.x (PC1512).',0
+        db      'MEM 0.27 para MS-DOS 3.x (PC1512).',0
         db      0FFh
 
 ; ---------------------------------------------------------------------

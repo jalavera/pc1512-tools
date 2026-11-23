@@ -1,5 +1,5 @@
 ;  LOADHI.ASM  -  carrega programes a la mem•ria superior amb MS-DOS 3.x
-;                                                               versi¢ 0.20
+;                                                               versi¢ 0.22
 ;  és:  LOADHI [@fitxer] [/H:inici[-final]] [/F] [/B:n] [/FILES:n] [/C]
 ;              [/R:n] [/RB:n] [/RC:n] [programa [par…metres]]
 ;
@@ -165,18 +165,18 @@ start:  cld
 .sh2:   TSTEP   '4'
         TDIG    st_hi
         jmp     shell_go
-.have:  mov     al,[o_c]                ; /C /B /FILES: nom‚s com a SHELL=
+.have:  call    first_prog              ; la zona ja hi ‚s (la fa el DOS:
+        jc      .hv0                    ;   HIDOS) i som el SHELL=: com
+        mov     byte [isshell],1        ;   quan la fem nosaltres (amb /C,
+        mov     byte [o_r],0            ;   /B, /FILES o sense)
+        jmp     .zdone
+.hv0:   mov     al,[o_c]                ; /C /B /FILES: nom‚s com a SHELL=
         or      al,[o_buf]
         or      al,[o_files]
         or      al,[o_rb]
         or      al,[o_rc]
         jz      .hv1
-        call    first_prog              ; la zona ja hi ‚s (la fa el DOS:
-        jc      .hv0                    ;   HIDOS) i som el SHELL=: /C,
-        mov     byte [isshell],1        ;   /B i /FILES s¡ que valen
-        mov     byte [o_r],0
-        jmp     .zdone
-.hv0:   mov     dx,m_shonly
+        mov     dx,m_shonly
         jmp     fail
 .hv1:   cmp     byte [o_h],0
         je      .go
@@ -220,9 +220,11 @@ start:  cld
 .f1:    call    build_pb
         call    kids_snap               ; fills d'altres LOADHI d'abans
         call    block_low
-        call    do_exec
+        call    xhook                   ; si el programa n'executa un altre,
+        call    do_exec                 ;   la convencional torna a ser lliure
         pushf
         push    ax
+        call    xunhook
         call    unblock
         pop     ax
         popf
@@ -1432,6 +1434,112 @@ unblock:
         pop     es
         ret
 
+; ---------------------------------------------------------------------
+;  Programes que n'executen d'altres (men£s com APPHI, GEM.BAT...): la
+;  convencional est… tapada perquŠ el programa vagi a dalt, per• els
+;  que executa ell l'han de tenir lliure. Un ganxo petit a la INT 21h,
+;  en un bloc seu, destapa la convencional al primer EXEC (4Bh) que fa
+;  el programa. Si quan torna la INT 21h encara ‚s nostra, es treu i el
+;  bloc s'allibera; si no (un TSR s'hi ha posat al davant), el ganxo
+;  queda, desactivat (48 bytes).
+; ---------------------------------------------------------------------
+xhook:  mov     word [xseg],0
+        mov     ah,48h
+        mov     bx,(xh_end-xh+15)/16
+        int     21h
+        jc      .r
+        mov     [xseg],ax
+        mov     es,ax
+        xor     di,di
+        mov     si,xh
+        mov     cx,xh_end-xh
+        cld
+        rep     movsb
+        push    es                      ; propietari: el sistema (que
+        mov     ax,es                   ;   no s'alliberi amb el programa)
+        dec     ax
+        mov     es,ax
+        mov     word [es:1],8
+        mov     word [es:8],'LO'
+        mov     word [es:10],'AD'
+        mov     word [es:12],'HI'
+        pop     es
+        mov     ax,3521h
+        int     21h
+        mov     ax,[xseg]
+        push    ds
+        mov     ds,ax
+        mov     [xh_old-xh],bx
+        mov     [xh_old-xh+2],es
+        mov     word [xh_ub-xh],xunbl
+        mov     [xh_ub-xh+2],cs
+        mov     byte [xh_st-xh],2       ; (el 1r EXEC ‚s el nostre)
+        xor     dx,dx
+        mov     ax,2521h
+        int     21h
+        pop     ds
+        push    cs
+        pop     es
+.r:     ret
+
+xunhook:
+        mov     ax,[xseg]
+        or      ax,ax
+        jz      .r
+        push    es
+        mov     es,ax
+        mov     byte [es:xh_st-xh],0    ; ja no fa res
+        push    ax
+        mov     ax,3521h
+        int     21h
+        pop     ax
+        cmp     bx,0                    ; encara ‚s la nostra?
+        jne     .q
+        mov     bx,es
+        cmp     bx,ax
+        jne     .q
+        mov     es,ax
+        push    ds
+        lds     dx,[es:xh_old-xh]
+        mov     ax,2521h
+        int     21h
+        pop     ds
+        mov     ah,49h                  ; (es = el bloc)
+        int     21h
+.q:     pop     es
+        mov     word [xseg],0
+.r:     ret
+
+; (crida llunyana des del ganxo) destapa la convencional
+xunbl:  push    ds
+        push    es
+        push    ax
+        push    bx
+        push    cs
+        pop     ds
+        call    unblock
+        pop     bx
+        pop     ax
+        pop     es
+        pop     ds
+        retf
+
+; plantilla del ganxo (es copia a un bloc seu, a l'offset 0)
+xh:     cmp     ah,4Bh
+        jne     .c
+        cmp     byte [cs:xh_st-xh],1
+        jb      .c                      ; 0: desactivat
+        je      .u
+        dec     byte [cs:xh_st-xh]      ; 2: el de LOADHI, passa
+        jmp     short .c
+.u:     mov     byte [cs:xh_st-xh],0    ; 1: el del programa: destapa
+        call    far [cs:xh_ub-xh]
+.c:     jmp     far [cs:xh_old-xh]
+xh_st   db      0
+xh_old  dd      0
+xh_ub   dd      0
+xh_end:
+
 ; EXEC de [path]. Torna CF i AX
 do_exec:
         mov     [ss_save],ss
@@ -1771,7 +1879,7 @@ m_tros2 db      ': lliure $'
 m_low   db      'No hi cap a la zona alta: es carrega a la mem•ria convencional.',CR,LF,'$'
 m_xerr  db      'No s',27h,'ha pogut executar el programa.',CR,LF,'$'
 m_badfmt db     'El programa no t‚ un format v…lid (els .BAT no es poden carregar).',CR,LF,'$'
-m_help  db      'LOADHI 0.20 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
+m_help  db      'LOADHI 0.22 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
         db      CR,LF
         db      'LOADHI [@fitxer] [/H:ini[-fi]] [/F] [/B:n] [/FILES:n] [/C] [/R:n]',CR,LF
         db      '       [/RB:n] [/RC:n]',CR,LF
@@ -2791,6 +2899,7 @@ hend    resw    1
 o_h     resb    1
 o_f     resb    1
 o_c     resb    1
+xseg    resw    1
 o_r     resb    1
 o_rb    resb    1
 o_rc    resb    1
