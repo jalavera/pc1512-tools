@@ -134,7 +134,7 @@ Coses a saber
 - Llista de fins a 100 aplicacions, rutes de fins a 65 car…cters.
 - Per obrir aplicacions amb Intro cal X:\GEM.BAT (el que engega el
   GEM, amb GEMHI si el fas servir) que passi el par…metre a GEMVDI
-  (GEMHI GEMVDI %1 %2). Mentre el GEM corre, GEMGO ocupa uns 20 KB de
+  (amb GEMHI 0.21: GEMHI /A:HVRS /B:G GEMVDI %1 %2). Mentre el GEM corre, GEMGO ocupa uns 20 KB de
   mem•ria convencional.
 - Muntatge: nasm -f bin GEMGO.ASM -o GEMGO.COM (el font ‚s en CP850).
 
