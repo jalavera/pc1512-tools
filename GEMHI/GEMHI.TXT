@@ -1,4 +1,4 @@
-GEMHI 0.3 - El GEM amb la seva memïria a la zona alta (PC1512)
+GEMHI 0.18 - El GEM amb la seva memïria a la zona alta (PC1512)
 ==============================================================
 
 Quä fa
@@ -21,6 +21,44 @@ deixa de fer: les aplicacions reben memïria convencional com sempre.
 Els blocs continuen essent del GEM: quan en surts, el DOS els allibera.
 Si a dalt no hi cap, aquell bloc va a la convencional, com abans.
 
+Aplicacions (des de la 0.4): quan el GEM engega una aplicaci¢ (un
+.APP: l'escriptori, BASIC2, Paint, Trazos...), GEMHI prova de
+carregar-la a la zona alta. Si hi cap, hi va; si no, es carrega a la
+convencional com sempre, sense dir res. Cada vegada que s'obre una
+aplicaci¢ es torna a provar. La memïria que l'aplicaci¢ demana desprÇs
+(dibuixos, documents, programes BASIC...) va a la convencional, que
+queda lliure gairebÇ sencera.
+Marques (des de la 0.5): cada .APP pot portar una marca que diu on
+vol el programa i on vol les dades. La posa i la treu GEMGO.
+- Programa a baix (0.5): GEMHI el carrega a la convencional. Per a
+  aplicacions amb dades grans que val mÇs posar a dalt. La porta el
+  SOLITARI 0.2: el programa (62 KB) va a baix i les cartes (103 KB),
+  que el SOLITARI demana a dalt pel seu compte, a dalt.
+- Dades a dalt (0.6): la memïria que l'aplicaci¢ demana desprÇs va
+  primer a la zona alta i, si no hi cap, a la convencional. NomÇs per
+  a aplicacions que no fan crÇixer els seus blocs de dades: si un bloc
+  de dades a dalt ha de crÇixer i no pot, l'aplicaci¢ es queda sense
+  memïria encara que a baix n'hi hagi.
+- Accessori a baix (0.7): els .ACC tambÇ poden portar la marca (nomÇs
+  el programa). Quan el GEM obre en arrencar un accessori marcat, la
+  petici¢ de memïria segÅent prou gran per a la seva imatge va a la
+  convencional. Per deixar la memïria alta per a les aplicacions.
+- Marca llarga (0.8): si a l'offset 1Ch no hi ha marca, GEMHI la
+  busca a la resta de la capáalera ('GHMK', programa, dades). La posa
+  GEMGO 0.3 als fitxers on 1Ch no es pot fer servir.
+Sense marca: programa a dalt si hi cap, dades a baix.
+
+Mesures (0.9): mentre corre una aplicaci¢ GEM (.APP), GEMHI compta la
+memïria de dades que demana (la punta i quants blocs) i si demana fer
+crÇixer un bloc que ja tÇ (el del programa o un de dades). Quan la
+tanques, ho apunta a GEMHI.LOG, a la mateixa carpeta que GEMHI.COM
+(0.10; si no la pot saber, a l'arrel de la unitat del GEM), un registre
+per aplicaci¢ amb el mÖxim de totes les vegades. GEMGO 0.6 ho mostra.
+Per tornar a comenáar les mesures, esborra GEMHI.LOG.
+No es toquen: els programes de DOS (.COM, .EXE) que engeguis des de
+l'escriptori, ni el que s'executi des d'una aplicaci¢ o des de la
+Shell de DOS.
+
 GEMVDI es carrega a dalt amb la memïria convencional tapada (EXEC
 4B01h: carregar sense executar) i desprÇs se li passa el control.
 Quan GEMVDI s'ha carregat, GEMHI li posa com a pare COMMAND.COM (amb
@@ -34,7 +72,7 @@ trobi la carpeta.
 Cal
 ---
 - La zona alta de LOADHI (LOADHI /H al CONFIG.SYS) amb lloc lliure:
-  uns 120 KB (al tros gran n'hi ha 168).
+  uns 120 KB per al GEM, i mÇs si vols que hi vagin les aplicacions.
 - MS-DOS 3.20 o posterior.
 
 Instal˙laci¢
@@ -53,6 +91,23 @@ Per comprovar-ho: a la Shell de DOS del GEM, MEM /D (0.23 o
 posterior): AMSTRAD, CALCLOCK, EINES... han de sortir a la memïria
 superior, i la convencional lliure ha de ser uns 120 KB mÇs gran.
 
+Mode de depuraci¢: GEMHI /D GEMVDI ...
+---------------------------------------
+Amb /D (abans del nom de GEMVDI), cada aplicaci¢ que obris mostra dues
+alertes del GEM:
+ - en engegar-se (just desprÇs del seu appl_init): la marca que porta,
+   on Çs el programa de debï (a dalt o a baix, i el segment del PSP),
+   el motiu (marca Alta, marca Conv, sense marca, escriptori, o no hi
+   cabia a dalt) i quä es farÖ amb les dades. Si no hi cabia, diu
+   quants KB necessita el programa (imatge, memïria m°nima i PSP, de
+   la capáalera) i quants n'hi havia a dalt (el bloc lliure mÇs gran):
+   "Motiu: cal 131K, a dalt 49K";
+ - en sortir (just abans del seu appl_exit): quants blocs de dades i
+   quants KB han anat a dalt i a baix, i si ha demanat fer crÇixer el
+   bloc del programa o un de dades.
+Les aplicacions que no criden el GEM (programes de DOS) no en mostren.
+Per tornar al mode normal, treu el /D.
+
 Si alguna cosa va malament
 --------------------------
 Torna a posar la l°nia com era (GEMVDI sense GEMHI) i tot Çs com
@@ -63,6 +118,18 @@ Trucs
 -----
 - Peticions de mÇs de 64 KB i les consultes de memïria lliure no es
   toquen: van sempre a la convencional.
+- Una aplicaci¢ hi cap si tÇ lloc en un sol tros lliure de la zona
+  alta. Mentre el GEM Çs engegat, el GEM ja hi ocupa uns 120 KB: amb
+  una zona de 248 KB en un sol tros en queden uns 130 KB lliures.
+- Si una aplicaci¢ carregada a dalt va justa de memïria (diu que no
+  n'hi ha prou, o no obre documents que abans obria), digues-me quina
+  Çs: n'hi ha que volen tota la memïria dins el seu propi bloc, i a
+  dalt aquest bloc Çs mÇs petit. Mentrestant, torna a la 0.3.
+- Per veure on ha anat: a la Shell de DOS, MEM /D amb l'aplicaci¢
+  oberta.
+- La marca: 4 bytes a l'offset 1Ch de la capáalera MZ del .APP: 'G',
+  'H', programa ('A' alta, 'B' baix) i dades ('A' alta, 0 baix). El
+  build.py dels nostres jocs posa 'GHB',0 amb l'opci¢ 'baix'.
 - GEMHI fa servir el segon EXEC per saber que el GEM ja ha arrencat
   (el primer Çs el de GEMVDI que engega GEM.EXE).
 - Muntatge: nasm -f bin GEMHI.ASM -o GEMHI.COM
@@ -75,6 +142,59 @@ GEMHI.TXT   aquest fitxer
 
 Historial
 ---------
+0.18 22-11-2026  /D: si el programa no hi cap a dalt, quants KB demana i
+                 quants n'hi havia.
+0.17 22-11-2026  Corregit /D: l'escriptori i les aplicacions de Digital
+                 Research comproven que el GEM hi Çs mirant la marca
+                 'GEMAES20' de la interrupci¢ EFh, i amb /D no la
+                 trobaven ("GEMAES no est† en la memoria").
+0.16 22-11-2026  Opci¢ /D: alertes del GEM amb el que GEMHI ha fet amb
+                 cada aplicaci¢ (on Çs el programa i per quä, i on han
+                 anat les dades).
+0.15 22-11-2026  Trobada la causa del penjament de les aplicacions
+                 carregades a dalt (traáa pas a pas): GEMHI tornava al
+                 GEM amb l'adreáa que el GEM havia deixat a la seva
+                 pila, perï mentre corre l'aplicaci¢ l'AES fa servir
+                 aquesta pila i l'esborra: tornava a 0000:0000. Ara
+                 GEMHI es guarda aquesta adreáa a part. De moment el
+                 programa de les aplicacions continua anant a baix
+                 si no porta la marca 'A' (GEMGO: P a Alta).
+0.14 22-11-2026  Sense marca, el programa de les aplicacions va a baix
+                 (EXEC normal): el GEM 2.0 es penja quan torna d'una
+                 aplicaci¢ que ha estat a dalt (proves PROVA1-5 i la
+                 versi¢ amb xiulets: GEMHI hi torna bÇ, el GEM no
+                 continua). L'escriptori (DESKTOP.APP) i els accessoris
+                 continuen a dalt; les dades amb la marca D, tambÇ. Amb
+                 la marca de programa 'A' (GEMGO: P a Alta) encara es
+                 prova a dalt.
+0.13 22-11-2026  Les aplicacions carregades a dalt es penjaven totes en
+                 sortir (les proves PROVA1-5 ho han demostrat). El DOS
+                 torna al GEM fent IRET amb el marc de pila que troba al
+                 PSP del GEM: ara aquest marc Çs complet i apunta al
+                 retorn de GEMHI (a la 0.12 era buit: PC reiniciat).
+0.12 22-11-2026  Corregit de debï el penjament en sortir d'algunes
+                 aplicacions carregades a dalt: el DOS, en acabar
+                 l'aplicaci¢, tornava per un marc de pila vell del GEM
+                 (un 4B01h no el posa al dia) i hi escrivia. Ara GEMHI
+                 li deixa preparat un marc propi.
+0.11 22-11-2026  Corregit: algunes aplicacions carregades a dalt
+                 (LLAMADAS, TRAZOS, OUTPUT) es penjaven en sortir. Ara
+                 GEMHI carrega i torna amb una pila prïpia i no toca la
+                 del GEM.
+0.10 22-11-2026  GEMHI.LOG es desa al costat de GEMHI.COM, no a l'arrel.
+0.9  22-11-2026  Mesures de cada aplicaci¢ a GEMHI.LOG (per a GEMGO
+                 0.6). NomÇs provada al simulador.
+0.8  22-11-2026  Llegeix tambÇ la marca llarga (GEMGO 0.3). NomÇs
+                 provada al simulador.
+0.7  22-11-2026  Accessoris amb la marca "a baix" (la posa GEMGO 0.2).
+                 NomÇs provada al simulador.
+0.6  22-11-2026  Marca "dades a dalt" (la posa GEMGO). NomÇs provada al
+                 simulador.
+0.5  22-11-2026  Els .APP amb la marca "carrega'm a baix" van a la
+                 convencional (SOLITARI 0.2). NomÇs provada al simulador.
+0.4  21-11-2026  Les aplicacions GEM (.APP) es carreguen a la zona alta
+                 si hi caben; si no, a la convencional, com sempre.
+                 NomÇs provada al simulador.
 0.3  20-11-2026  GEMHI mateix va a la zona alta: no queda res seu a
                  la convencional mentre dura el GEM.
 0.2  20-11-2026  GEMVDI es carrega a la zona alta. Ruta completa del
