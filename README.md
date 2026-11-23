@@ -8,7 +8,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 |---|---|---|
 | [LOADHI](LOADHI/) | 0.22 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM |
 | [MEM](MEM/) | 0.27 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos |
-| [GEMHI](GEMHI/) | 0.18 | Engega el GEM 2.0 amb GEMVDI, AMSTRAD.SYS, els accessoris i els recursos a la memòria superior (uns 120 KB més de convencional); dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
+| [GEMHI](GEMHI/) | 0.21 | Engega el GEM 2.0 triant amb /A: i /B: on va cada peça (GEMHI, GEMVDI, GEM.EXE, recursos, controladors i lletres), amb els accessoris a la memòria superior; dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
 | [GEMGO](GEMGO/) | 0.14 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; Intro les obre amb el GEM; F1, ajuda (abans APPHI) |
 | [CHARMAP](CHARMAP/) | 0.7 | Accessori del GEM 2.0: mapa de caràcters que escriu una cadena a l'aplicació del davant |
 | [DOSSHELL](DOSSHELL/) | 0.2 | Accessori del GEM 2.0: Shell de DOS des de qualsevol aplicació GEM; per tornar, EXIT |

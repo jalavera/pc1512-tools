@@ -1,4 +1,4 @@
-GEMHI 0.18 - El GEM amb la seva mem•ria a la zona alta (PC1512)
+GEMHI 0.21 - El GEM amb la seva mem•ria a la zona alta (PC1512)
 ==============================================================
 
 QuŠ fa
@@ -9,12 +9,40 @@ convencional:
    AMSTRAD.SYS (controlador de pantalla)   40 KB
    accessoris (CALCLOCK, SNAPSHOT, EINES)  ~51 KB
    GEM.RSC i mem•ria interna del GEM       ~26 KB
-Tamb‚ GEMVDI (5 KB) i GEMHI mateix (3 KB) van a dalt.
+Tamb‚ GEMVDI (5 KB) i GEMHI mateix (uns 6,5 KB) van a dalt.
 S¢n uns 120 KB m‚s de mem•ria convencional per a les aplicacions GEM
 (BASIC2, Paint, Write...) i per a la Shell de DOS.
 
+On va cada pe‡a (0.19 a 0.21): a la l¡nia del GEM.BAT hi dius, sempre,
+on va cadascuna de les cinc peces:
+   H  GEMHI mateix (el que queda a la mem•ria)   ~6,5 KB
+   V  GEMVDI                                     ~5 KB
+   G  GEM.EXE, el programa del GEM               ~62 KB
+   R  GEM.RSC i mem•ria interna del GEM          ~26 KB
+   S  controladors (AMSTRAD.SYS) i lletres .FNT  ~40 KB
+Les que vols a la mem•ria alta van darrere /A: i les que vols a la
+baixa (la convencional), darrere /B:. Cada lletra hi ha de ser una
+vegada, a /A: o a /B:. Si en falta alguna, GEMHI diu quina i no
+engega el GEM; si n'hi ha una de repetida o una que no ‚s cap pe‡a,
+tamb‚ ho diu. Si una pe‡a de /A: no hi cap a dalt, va a baix sense
+dir res. Les lletres poden ser maj£scules o min£scules, i en qualsevol
+ordre.
+Els accessoris no hi entren: cadascun va on diu la seva marca (GEMGO,
+P), i sense marca, a dalt.
+Exemples:
+   GEMHI /A:HVRS /B:G GEMVDI   com la 0.18 (GEM.EXE a baix)
+   GEMHI /A:HVGRS GEMVDI       tot a dalt: uns 62 KB m‚s de
+                               convencional, per• menys lloc a dalt
+                               per a les aplicacions
+   GEMHI /B:HVGRS GEMVDI       tot a baix (nom‚s accessoris i
+                               aplicacions marcades a dalt)
+   GEMHI /A:HVG /B:RS GEMVDI   barrejat
+Amb H a /A:, MEM mostra el bloc de GEMHI de dalt a nom de GEMVDI: GEMHI
+li'n passa la propietat perquŠ el DOS l'alliberi quan surts del GEM.
+Amb H a /B:, GEMHI es queda a baix amb el seu propi nom.
+
 Com ho fa: es copia a un bloc de la zona alta i hi queda mentre dura
-el GEM (uns 3 KB) vigilant les peticions de mem•ria al DOS. Mentre el GEM arrenca, tapa un
+el GEM (uns 6,5 KB) vigilant les peticions de mem•ria al DOS. Mentre el GEM arrenca, tapa un
 moment la mem•ria convencional lliure i el DOS li dona un bloc de la
 zona alta. Quan el GEM engega l'escriptori (la primera aplicaci¢), ho
 deixa de fer: les aplicacions reben mem•ria convencional com sempre.
@@ -81,9 +109,12 @@ Instalúlaci¢
 2. Al fitxer que engega el GEM (GEM.BAT o similar), canvia la l¡nia
       GEMVDI ...
    per
-      GEMHI GEMVDI ...
-   amb els mateixos par…metres que tingu‚s. Si GEMVDI hi surt amb
-   carpeta (\GEMSYS\GEMVDI), posa-la igual: GEMHI \GEMSYS\GEMVDI.
+      GEMHI /A:HVRS /B:G GEMVDI ...
+   (o les lletres que vulguis) amb els mateixos par…metres que
+   tingu‚s. Si GEMVDI hi surt amb carpeta (\GEMSYS\GEMVDI), posa-la
+   igual: GEMHI /A:HVRS /B:G \GEMSYS\GEMVDI.
+   Atenci¢: les l¡nies de la 0.18 (GEMHI GEMVDI), la 0.19 i la 0.20
+   (/V:A /G:B...) ja no engeguen el GEM: cal posar-hi /A: i /B:.
 3. Engega el GEM com sempre.
 En sortir del GEM, GEMHI diu quants blocs ha posat a dalt i on.
 
@@ -91,10 +122,19 @@ Per comprovar-ho: a la Shell de DOS del GEM, MEM /D (0.23 o
 posterior): AMSTRAD, CALCLOCK, EINES... han de sortir a la mem•ria
 superior, i la convencional lliure ha de ser uns 120 KB m‚s gran.
 
-Mode de depuraci¢: GEMHI /D GEMVDI ...
----------------------------------------
-Amb /D (abans del nom de GEMVDI), cada aplicaci¢ que obris mostra dues
-alertes del GEM:
+Mode de depuraci¢: GEMHI /D /A:... /B:... GEMVDI ...
+----------------------------------------------------
+Amb /D (abans del nom de GEMVDI), la primera aplicaci¢ que crida el
+GEM (normalment l'escriptori) mostra abans una alerta amb on ha anat
+cada pe‡a del GEM: la lletra que li has donat i on ‚s de deb•, amb
+els KB:
+   H GEMHI   A: dalt 7K
+   V GEMVDI  A: dalt 5K
+   G GEM.EXE B: baix 62K
+   R RSC/mem A: dalt 26K baix 0K
+   S SYS/FNT A: dalt 40K baix 0K
+Si una pe‡a diu A per• surt "baix", ‚s que no hi cabia a dalt.
+Despr‚s, cada aplicaci¢ que obris mostra dues alertes del GEM:
  - en engegar-se (just despr‚s del seu appl_init): la marca que porta,
    on ‚s el programa de deb• (a dalt o a baix, i el segment del PSP),
    el motiu (marca Alta, marca Conv, sense marca, escriptori, o no hi
@@ -142,6 +182,23 @@ GEMHI.TXT   aquest fitxer
 
 Historial
 ---------
+0.21 23-11-2026  Les lletres, agrupades per lloc: /A:HVGRS, /B:HVGRS o
+                 barrejat (/A:HVG /B:RS). Totes cinc, una sola vegada:
+                 si en falta alguna, diu quina; tamb‚ avisa de lletres
+                 repetides o que no s¢n cap pe‡a.
+0.20 23-11-2026  /H: on es queda GEMHI mateix (A dalt, B baix); ara cal
+                 posar les cinc lletres. GEMHI ocupa menys: nom‚s queda
+                 a la mem•ria la part que fa feina mentre corre el GEM
+                 (uns 6,5 KB; a la 0.19, 8,5 KB). L'arrencada i els
+                 textos d'ajuda ja no s'hi queden. /D tamb‚ diu on ‚s
+                 GEMHI.
+0.19 23-11-2026  On va cada pe‡a del GEM, sempre expl¡cit: /V GEMVDI,
+                 /G GEM.EXE (nou: tamb‚ es pot posar a dalt), /R
+                 GEM.RSC i mem•ria interna, /S controladors i lletres,
+                 cadascuna A o B. /D mostra on ha anat cada pe‡a. El
+                 bloc de GEMHI a baix es redueix al PSP (256 bytes).
+                 Els accessoris sense marca van a dalt encara que /R
+                 sigui B.
 0.18 22-11-2026  /D: si el programa no hi cap a dalt, quants KB demana i
                  quants n'hi havia.
 0.17 22-11-2026  Corregit /D: l'escriptori i les aplicacions de Digital
