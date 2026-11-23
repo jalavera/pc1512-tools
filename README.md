@@ -14,7 +14,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [EINES](EINES/) | 0.3 | Accessori del GEM 2.0: CHARMAP i una Shell de DOS en un sol fitxer (el GEM 2.0 només carrega 3 accessoris) |
 | [IOPATCH](IOPATCH/) | 5.0 | Pedaç de l'IO.SYS del MS-DOS 3.20: menú d'arrencada (MS-DOS / DOS Plus...) amb ratolí i compte enrere, i memòria convencional fins a 736 KB, sense FIXLDR; es desfà amb /U. Amb IOCONFIG per configurar el menú |
 | [IOPATCH6](IOPATCH6/) | 1.0 | Pedaç de l'IO.SYS del MS-DOS 6.22: memòria convencional fins a 736 KB; es desfà amb /U |
-| [HIDOS](HIDOS/) | 0.12 | Posa el nucli del MS-DOS 3.20 i les seves taules (FILES, BUFFERS, FCBS, unitats, DEVICEHIGH=) a la memòria superior; BUFFERSLOW=/FILESLOW=/FCBSLOW= i REM al CONFIG.SYS, intèrpret a baix amb /S-; es desfà amb /U |
+| [HIDOS](HIDOS/) | 0.13 | Posa el nucli del MS-DOS 3.20 i les seves taules (FILES, BUFFERS, FCBS, unitats, DEVICEHIGH=) a la memòria superior; BUFFERSLOW=/FILESLOW=/FCBSLOW= i REM al CONFIG.SYS, intèrpret a baix amb /S-, només les ordres noves amb /N; es desfà amb /U |
 | [XPATH](XPATH/) | 0.7 | PATH (i altres variables) a l'entorn del COMMAND.COM principal, amb %VAR%, comprovació dels camins i llistes desades |
 | [KEYBX](KEYBX/) | 2.4 | Remapejador de teclat resident (MS-DOS 2.x a 6.xx): aprèn quina tecla fa cada símbol quan l'emulador envia codis que no quadren amb el teclat; amb driver de ratolí del PC1512 (/M). Porta el KEYBX.CFG configurat |
 | [AMSMOUSE](AMSMOUSE/) | 0.3 | Controlador de ratolí mínim (INT 33h) per al ratolí de l'Amstrad PC1512 |

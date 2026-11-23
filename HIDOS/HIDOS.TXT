@@ -1,4 +1,4 @@
-HIDOS per a MS-DOS 3.20                                      versi¢ 0.12
+HIDOS per a MS-DOS 3.20                                      versi¢ 0.13
 
 QuŠ ‚s
 ------
@@ -45,11 +45,10 @@ Contingut del disquet
 HIDOS.COM    el programa
 HIDOS.TXT    aquest fitxer
 HIDOS.ASM    el codi font del programa
-HIDOSK.ASM   el codi font del que s'afegeix al DOS.SYS (2.176 bytes)
+HIDOSK.ASM   el codi font del que s'afegeix al DOS.SYS (2.256 bytes)
              nasm -f bin HIDOSK.ASM -o HIDOSK.BIN
              nasm -f bin HIDOS.ASM -o HIDOS.COM
-LOADHI.COM, LOADHI.TXT, LOADHI.ASM, LOADHIT.COM   LOADHI 0.20
-MEM.COM, MEM.TXT, MEM.ASM                         MEM 0.27
+LOADHI 0.22 i MEM 0.27 van als seus disquets (LOADHI22 i MEM27).
 
 Instalúlaci¢
 ------------
@@ -59,8 +58,9 @@ Instalúlaci¢
 3. HIDOS                (o HIDOS /H:inici-final si la RAM ‚s en un altre
                          lloc; vegeu m‚s avall)
    o HIDOS /B           (tamb‚ el BIOS a dalt; vegeu "Compte")
-   Si ja hi tens una versi¢ anterior, HIDOS 0.12 l'actualitza i
-   conserva la zona (i el /B, des de la 0.3).
+   Si ja hi tens una versi¢ anterior, HIDOS 0.13 l'actualitza i
+   conserva la zona (i el /B, des de la 0.3; el /L i el /S-, des de
+   la 0.10 i la 0.12).
 4. Reinicia. En arrencar, abans de l'AUTOEXEC.BAT, surt:
      HIDOS: MS-DOS a la mem•ria superior, BE00-FBFF (BIOS incl•s).
    (sense "(BIOS incl•s)" si no fas servir /B). Si la zona no ‚s RAM:
@@ -139,6 +139,35 @@ del 3.20 se'l salta abans de mirar la paraula. Compte: el DOS nom‚s
 mira el principi de la paraula, de manera que REMOTE=... tamb‚ seria
 un comentari (no hi ha cap ordre del CONFIG.SYS que comenci per REM).
 
+Nom‚s les ordres noves, sense mem•ria superior: /N
+--------------------------------------------------
+Amb HIDOS /N, el DOS.SYS continua entenent les ordres noves del
+CONFIG.SYS, per• l'MS-DOS es queda a baix, com sense HIDOS (no fa
+servir la zona alta encara que hi hagi RAM). Serveix per tornar al
+funcionament de sempre sense haver de tocar el CONFIG.SYS:
+  REM ...           no fa res (sense HIDOS: "Comando irreconocible")
+  DEVICEHIGH=       com DEVICE=, a baix
+  BUFFERSLOW=n      n BUFFERS m‚s, a m‚s dels de BUFFERS=
+  FILESLOW=n        n FILES m‚s, a m‚s dels de FILES=
+  FCBSLOW=n,m       com FCBS=
+Sense HIDOS, el DOS pren BUFFERSLOW= per BUFFERS=, FILESLOW= per
+FILES= i FCBSLOW= per FCBS=, i val l'£ltim: amb FILES=5 i FILESLOW=15
+en tindries 15, no 20. Amb /N els n£meros quadren (20).
+En arrencar diu:
+  HIDOS: ordres noves del CONFIG.SYS; MS-DOS a baix (/N).
+La mem•ria superior la pots fer llavors amb LOADHI al SHELL=, com
+abans de HIDOS (amb /H:, i /B: i /FILES: si vols BUFFERS i FILES a
+dalt):
+  SHELL=C:\UTILS\LOADHI.COM @C:\UTILS\LOADHI.CFG
+  LOADHI.CFG:  /H:BE00-FBFF /B:0 /FILES:0 /F
+               C:\COMMAND.COM C:\ /P
+(amb /C, a m‚s, COMMAND.COM a dalt). Aquest mateix SHELL= i LOADHI.CFG
+tamb‚ funcionen amb HIDOS normal (el /H: llavors no hi fa res).
+HIDOS /N- torna a posar l'MS-DOS a dalt (conserva la zona, /B, /L i
+/S-). HIDOS sol diu si hi ha /N. Amb HIDOS /U (DOS.SYS original),
+el CONFIG.SYS tamb‚ serveix, per• REM dona el missatge i els
+...LOW fan el que hem dit.
+
 Controladors: DEVICE= i DEVICEHIGH=
 -----------------------------------
 Com a l'MS-DOS 5 i 6:
@@ -188,6 +217,9 @@ que no ‚s un AT. Per tenir el disc a dalt, DEVICEHIGH= sense /E.
   HIDOS /L-             totes tres a dalt
   HIDOS /S-             l'intŠrpret (SHELL=) pot anar a la convencional
   HIDOS /S              torna a reservar-la (a dalt, per defecte)
+  HIDOS /N              nom‚s les ordres noves del CONFIG.SYS; l'MS-DOS
+                        a baix, com sense HIDOS
+  HIDOS /N-             l'MS-DOS torna a dalt
   HIDOS /H:C000-FBFF    zona de RAM superior que es fa servir (segments
                         en hexadecimal, l'£ltim incl•s). Si el peda‡ ja
                         hi ‚s, nom‚s canvia la zona.
@@ -206,7 +238,7 @@ Com funciona
 ------------
 En arrencar, el DOS.SYS (el BIOS del DOS de Microsoft) carrega el
 MSDOS.SYS i el SYSINIT el copia "darrere el BIOS" i el posa en marxa.
-HIDOS canvia uns 30 bytes del DOS.SYS en 11 llocs i hi afegeix 2.176 bytes al
+HIDOS canvia uns 30 bytes del DOS.SYS en 11 llocs i hi afegeix 2.256 bytes al
 final:
 - Si tota la zona ‚s RAM, el SYSINIT es creu que la mem•ria acaba al
   final de la zona: s'hi colúloca ell mateix, hi copia el nucli (al
@@ -241,7 +273,7 @@ final:
   el DOS original la pren per DEVICE, perquŠ nom‚s en compara el
   principi). Canvia l'INT 12h mentre s'executa l'ordre i despr‚s
   torna a posar la d'abans.
-El DOS.SYS passa de 16235 a 18416 bytes; el carregador de l'IOPATCH el
+El DOS.SYS passa de 16235 a 18528 bytes; el carregador de l'IOPATCH el
 llegeix sencer. L'IO.SYS i el MSDOS.SYS no es toquen.
 
 Compte
@@ -271,6 +303,10 @@ Compte
 
 Historial
 ---------
+0.13 23-11-2026  /N: nom‚s les ordres noves del CONFIG.SYS (REM,
+                 DEVICEHIGH, BUFFERSLOW, FILESLOW, FCBSLOW) i l'MS-DOS a
+                 baix, com sense HIDOS; /N- el torna a dalt. Actualitza
+                 un DOS.SYS de la 0.12 (en conserva /B, /L i /S-).
 0.12 23-11-2026  /S-: sense reservar la mem•ria convencional mentre
                  s'engega l'intŠrpret (LOADHI i COMMAND.COM a baix si
                  es vol). Actualitza un DOS.SYS de la 0.11.

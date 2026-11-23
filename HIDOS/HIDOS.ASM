@@ -1,13 +1,16 @@
 ; =====================================================================
 ;  HIDOS.ASM - Posa el nucli de l'MS-DOS 3.20 (MSDOS.SYS) i les seves
 ;              taules (FILES, BUFFERS, FCBS, unitats, controladors del
-;              CONFIG.SYS) a la mem•ria superior.            versi¢ 0.12
+;              CONFIG.SYS) a la mem•ria superior.            versi¢ 0.13
 ;
-;  Sintaxi:   HIDOS [unitat:] [/H:inici-final] [/B|/B-] [/L:BFC|/L-] [/S|/S-] [/U]
+;  Sintaxi:   HIDOS [unitat:] [/H:inici-final] [/B|/B-] [/L:BFC|/L-] [/S|/S-]
+;                    [/N|/N-] [/U]
 ;               (sense /U)  aplica el peda‡ a C:\DOS.SYS
 ;               /H:BE00-FBFF  RAM superior que es fa servir (segments,
 ;                           en hexadecimal; per defecte BE00-FBFF)
 ;               /B          tamb‚ el BIOS del DOS.SYS a dalt (/B-: no)
+;               /N          nom‚s les ordres noves del CONFIG.SYS (REM,
+;                           DEVICEHIGH, ...LOW): MS-DOS a baix (/N-: no)
 ;               /U          el desf…: el DOS.SYS torna a ser l'original
 ;
 ;  Per a la instalúlaci¢ de l'IOPATCH 5.0: C:\IO.SYS ‚s el carregador
@@ -43,6 +46,7 @@ NSIZE08 equ     KOFF+1648               ;   i de la 0.8
 NSIZE09 equ     KOFF+1664               ;   i de la 0.9
 NSIZE10 equ     KOFF+1888               ;   i de la 0.10
 NSIZE11 equ     KOFF+2160               ;   i de la 0.11
+NSIZE12 equ     KOFF+2176               ;   i de la 0.12
 SYSI    equ     2FF0h                   ; inici del SYSINIT al fitxer
 MAXF    equ     20000
 
@@ -81,7 +85,15 @@ start:  cld
         inc     si
         mov     byte [o_b],2
         jmp     .par
-.h:     cmp     al,'S'                  ; /S- intŠrpret a baix, /S a dalt
+.h:     cmp     al,'N'                  ; /N nom‚s ordres, /N- tot normal
+        jne     .hn
+        mov     byte [o_n],1
+        cmp     byte [si],'-'
+        jne     .hs
+        inc     si
+        mov     byte [o_n],2
+        jmp     .par
+.hn:    cmp     al,'S'                  ; /S- intŠrpret a baix, /S a dalt
         jne     .hl
         mov     byte [o_s],1
         cmp     byte [si],'-'
@@ -225,7 +237,11 @@ start:  cld
         je      .p0
         mov     word [rtab],recs11
         cmp     ax,NSIZE11
+        je      .p0
+        cmp     ax,NSIZE12
         jne     .p2
+        mov     word [rtab],recs12
+        mov     byte [v12],1
 .p0:    call    ispatch
         jne     .unk
         call    sigok
@@ -261,12 +277,21 @@ start:  cld
         cmp     word [rtab],recs10
         je      .p4
         cmp     word [rtab],recs11
-        jne     .p3
+        je      .p4
+        cmp     byte [v12],0
+        je      .p3
 .p4:
         cmp     word [rtab],recs10      ; de la 0.10 i 0.11: conserva /L
         je      .p6
         cmp     word [rtab],recs11
-        jne     .p5
+        je      .p6
+        cmp     byte [v12],0
+        je      .p5
+        cmp     byte [o_s],0            ; de la 0.12: conserva tamb‚ /S-
+        jne     .p6
+        test    byte [buf+KOFF+22h],8
+        jz      .p6
+        mov     byte [o_s],2
 .p6:
         cmp     byte [o_l],0
         jne     .p5
@@ -339,6 +364,7 @@ patched:
         or      al,[o_b]
         or      al,[o_l]
         or      al,[o_s]
+        or      al,[o_n]
         mov     dx,m_ja
         jz      .ja
         call    setrange
@@ -357,7 +383,11 @@ patched:
         je      .jb
         mov     dx,m_bsi
 .jb:    call    print
-        mov     dx,m_sh                 ; l'intŠrpret (/S-)
+        mov     dx,m_nn                 ; nom‚s ordres (/N)
+        test    byte [buf+KOFF+22h],10h
+        jz      .jn
+        call    print
+.jn:    mov     dx,m_sh                 ; l'intŠrpret (/S-)
         test    byte [buf+KOFF+22h],8
         jz      .js
         call    print
@@ -494,6 +524,41 @@ recs:   ; offset, n, bytes originals ; bytes nous (a newb, mateix ordre)
 
 ; espai que deixa el BIOS per al SYSINIT mentre arrenca (par…grafs)
 GAP     equ     ((0F80h+KSIZE+0FFh)/100h)*10h
+
+; els de HIDOS 0.12 (forat de 180h par…grafs, HIDOSK de 2176 bytes)
+SNEW12  equ     KOFF+2176-SYSI
+recs12: ; offset, n, bytes originals ; bytes nous (a newb, mateix ordre)
+        dw      0000h, 3
+        db      0E9h,3Eh,28h,   0E9h,CENT & 0FFh,CENT >> 8
+        dw      2980h, 3
+        db      0A3h,17h,00h,   0E8h,CUP & 0FFh,CUP >> 8
+        dw      299Bh, 2
+        db      00h,01h,        80h,01h
+        dw      2BDDh, 3
+        db      0A3h,09h,00h,   0E8h,CFIN & 0FFh,CFIN >> 8
+        dw      2C6Ah, 2
+        db      00h,01h,        80h,01h
+        dw      30FAh, 2
+        db      7Bh,0Fh,        (SNEW12-1) & 0FFh,(SNEW12-1) >> 8
+        dw      3104h, 2
+        db      7Ch,0Fh,        SNEW12 & 0FFh,SNEW12 >> 8
+        dw      327Fh, 5
+        db      33h,0C0h,0B4h,4Bh,0F9h, 0E8h,CLINK & 0FFh,CLINK >> 8,90h,90h
+        dw      35B9h, 5                ; SYSINIT 05C9h: segent l¡nia
+        db      0Eh,1Fh,0E8h,0C2h,05h,  0E8h,CNH & 0FFh,CNH >> 8,90h,90h
+        dw      3606h, 3                ; SYSINIT 0616h: cmp ah,'D'
+        db      80h,0FCh,44h,   0E9h,CDH & 0FFh,CDH >> 8
+        dw      3B04h, 2                ; SYSINIT 0B14h: taula de paraules
+        db      0F9h,0Ch,       CTAB & 0FFh,CTAB >> 8
+        dw      3329h, 3                ; SYSINIT 0339h: abans dels FILES
+        db      0E8h,8Eh,08h,   0E8h,CHF & 0FFh,CHF >> 8
+        dw      3374h, 3                ; SYSINIT 0384h: abans dels FCBS
+        db      0E8h,43h,08h,   0E8h,CHC & 0FFh,CHC >> 8
+        dw      33DBh, 5                ; SYSINIT 03EBh: abans dels BUFFERS
+        db      83h,3Eh,1Ah,00h,0FFh, 0E8h,CHB & 0FFh,CHB >> 8,90h,90h
+        dw      3486h, 3                ; SYSINIT 0496h: despr‚s
+        db      0E8h,31h,07h,   0E8h,CHE & 0FFh,CHE >> 8
+        dw      0FFFFh
 
 ; els de HIDOS 0.11 (forat de 180h par…grafs, HIDOSK de 2160 bytes)
 SNEW11  equ     KOFF+2160-SYSI
@@ -837,14 +902,20 @@ setrange:
         je      .s
         mov     al,[o_l]
         and     al,7
-        and     byte [buf+KOFF+22h],8
+        and     byte [buf+KOFF+22h],18h
         or      [buf+KOFF+22h],al
 .s:     cmp     byte [o_s],0            ; /S, /S-
-        je      .b
-        and     byte [buf+KOFF+22h],7
+        je      .n
+        and     byte [buf+KOFF+22h],17h
         cmp     byte [o_s],2
-        jne     .b
+        jne     .n
         or      byte [buf+KOFF+22h],8
+.n:     cmp     byte [o_n],0            ; /N, /N-
+        je      .b
+        and     byte [buf+KOFF+22h],0EFh
+        cmp     byte [o_n],1
+        jne     .b
+        or      byte [buf+KOFF+22h],10h
 .b:     cmp     byte [o_b],0            ; /B, /B-
         je      .h
         mov     al,[o_b]
@@ -939,6 +1010,8 @@ o_h     db      0
 o_b     db      0                       ; 1 = /B, 2 = /B-
 o_l     db      0                       ; /L: 80h + 1 FILES, 2 FCBS, 4 BUFFERS
 o_s     db      0                       ; 1 = /S, 2 = /S-
+o_n     db      0                       ; 1 = /N, 2 = /N-
+v12     db      0                       ; 1 = DOS.SYS de la 0.12
 ecode   db      1
 hs      dw      0
 he      dw      0
@@ -947,14 +1020,17 @@ fsize   dw      0
 okmsg   dw      0
 rtab    dw      recs
 
-m_banner db     'HIDOS 0.12 - nucli de l', 39, 'MS-DOS 3.20 a la mem', o_, 'ria superior', 13, 10, '$'
-m_us    db      'Sintaxi: HIDOS [unitat:] [/H:inici-final] [/B|/B-] [/L:BFC|/L-] [/S|/S-] [/U]', 13, 10
+m_banner db     'HIDOS 0.13 - nucli de l', 39, 'MS-DOS 3.20 a la mem', o_, 'ria superior', 13, 10, '$'
+m_us    db      'Sintaxi: HIDOS [unitat:] [/H:inici-final] [/B|/B-] [/L:BFC|/L-] [/S|/S-]', 13, 10
+        db      '               [/N|/N-] [/U]', 13, 10
         db      '  /H:BE00-FBFF  RAM superior (per defecte BE00-FBFF)', 13, 10
         db      '  /B            tamb', ee, ' el BIOS del DOS.SYS a dalt (/B-: no)', 13, 10
         db      '  /L:BFC        BUFFERS, FILES i/o FCBS a la mem', o_, 'ria convencional', 13, 10
         db      '                (/L-: totes a dalt; al CONFIG.SYS: BUFFERSLOW=...)', 13, 10
         db      '  /S-           l', 39, 'int', e_, 'rpret (SHELL=) es pot carregar a la convencional', 13, 10
         db      '                (/S: a dalt, per defecte)', 13, 10
+        db      '  /N            nom', ee, 's les ordres noves del CONFIG.SYS (REM,', 13, 10
+        db      '                DEVICEHIGH, ...LOW); MS-DOS a baix (/N-: tot normal)', 13, 10
         db      '  /U            desf', a_, ' el peda', c_, 13, 10, '$'
 m_badh  db      'Zona /H incorrecta: ha de ser per sobre d', 39, 'A000 i de 40 KB o m', e_, 's.', 13, 10, '$'
 m_nofile db     'No trobo (o no puc llegir) \DOS.SYS en aquesta unitat.', 13, 10, '$'
@@ -972,6 +1048,7 @@ m_okundo db     'Peda', c_, ' desfet: el DOS.SYS torna a ser l', 39, 'original.'
 m_crlf  db      13, 10, '$'
 m_bno   db      '  (BIOS a baix)', 13, 10, '$'
 m_bsi   db      '  (BIOS a dalt: /B)', 13, 10, '$'
+m_nn    db      '  Nom', ee, 's ordres noves (/N): MS-DOS a la mem', o_, 'ria convencional', 13, 10, '$'
 m_sh    db      '  Int', e_, 'rpret (SHELL=) a la mem', o_, 'ria convencional: /S-', 13, 10, '$'
 m_lo    db      '  A baix (/L):$'
 m_lb    db      ' BUFFERS$'

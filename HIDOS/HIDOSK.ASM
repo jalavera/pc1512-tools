@@ -26,7 +26,8 @@ bmoved  db      0                       ; +18h  1 = el BIOS s'ha copiat
         jmp     near nhook              ; +1Fh  segÅent l°nia del CONFIG
 lowtab  db      0                       ; +22h  taules a baix: 1 FILES,
                                         ;       2 FCBS, 4 BUFFERS (HIDOS /L:);
-                                        ;       8: intärpret a baix (/S-)
+                                        ;       8: intärpret a baix (/S-);
+                                        ;       10h: /N, sense zona alta
         jmp     near hkfil              ; +23h  abans dels FILES
         jmp     near hkfcb              ; +26h  abans dels FCBS
         jmp     near hkbuf              ; +29h  abans dels BUFFERS
@@ -70,6 +71,8 @@ bioshi: pushf
         push    es
         cmp     byte [cs:bion+B],0
         je      .no
+        test    byte [cs:lowtab+B],10h  ; /N: res a dalt
+        jnz     .no
         mov     cx,[cs:ustart+B]        ; tota la zona Çs RAM?
 .t:     cmp     cx,[cs:uend+B]
         jae     .ok
@@ -136,6 +139,8 @@ uptop:  push    ax
         push    es
         mov     [convtop],ax
         mov     byte [hion],0
+        test    byte [lowtab],10h       ; /N: nomÇs les ordres noves
+        jnz     .no
         mov     cx,[ustart]
         cmp     cx,ax                   ; per sobre de la convencional
         jb      .no
@@ -739,7 +744,13 @@ msg:    push    ax
         push    ds
         push    cs
         pop     ds
-        mov     dx,m_hi
+        mov     dx,m_n                  ; /N: un missatge i prou
+        test    byte [lowtab],10h
+        jz      .n
+        mov     ah,9
+        int     21h
+        jmp     short .q
+.n:     mov     dx,m_hi
         cmp     byte [hion],0
         jne     .z
         mov     dx,m_lo
@@ -762,7 +773,7 @@ msg:    push    ax
         mov     dx,m_fi
 .p:     mov     ah,9
         int     21h
-        pop     ds
+.q:     pop     ds
         pop     dx
         pop     ax
         ret
@@ -790,6 +801,7 @@ m_lo    db      13,10,'HIDOS: no hi ha RAM a $'
 m_lo2   db      '; MS-DOS a baix.',13,10,'$'
 m_bio   db      ' (BIOS incl',0A2h,'s).',13,10,'$'
 m_fi    db      '.',13,10,'$'
+m_n     db      13,10,'HIDOS: ordres noves del CONFIG.SYS; MS-DOS a baix (/N).',13,10,'$'
 
 ; ---- el ganxo de l'INT 21h (es copia a dalt; CS = el seu bloc) ----------
 hkstart:
