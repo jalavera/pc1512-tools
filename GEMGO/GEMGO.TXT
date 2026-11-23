@@ -1,4 +1,4 @@
-APPHI 0.13 - On carrega GEMHI les aplicacions i accessoris GEM (PC1512)
+GEMGO 0.14 - On carrega GEMHI les aplicacions i accessoris GEM (PC1512)
 =====================================================================
 
 Quä fa
@@ -17,8 +17,8 @@ L'escriptori (DESKTOP.APP) Çs un .APP com els altres.
 
 Ès
 --
-   APPHI          cerca a C:
-   APPHI D:       cerca a D:
+   GEMGO          cerca a C:
+   GEMGO D:       cerca a D:
 
    Fletxes, RePÖg, AvPÖg, Inici, Fi   tria l'aplicaci¢
    P    canvia el programa (Alta <-> Conv)
@@ -26,9 +26,11 @@ L'escriptori (DESKTOP.APP) Çs un .APP com els altres.
    T    treu la marca (torna a Alta / Conv)
    Intro obre l'aplicaci¢ triada amb el GEM: executa
         X:\GEM.BAT ruta-de-l'aplicaci¢ (X: la unitat on cerca), com
-        si escrivissis GEM PAINT. En sortir del GEM, torna a APPHI a
+        si escrivissis GEM PAINT. En sortir del GEM, torna a GEMGO a
         la carpeta on eres i en rellegeix les mesures.
    Esc  surt
+   F1   ajuda: una finestra amb les tecles, les columnes i els colors
+        (qualsevol tecla la tanca)
 
 La fila de sota la llista mostra la ruta sencera de l'aplicaci¢ triada
 i quantes vegades s'ha mesurat. La segÅent explica quä farÖ GEMHI, en
@@ -38,12 +40,12 @@ color:
                    GEMHI l'ha vist demanar fer crÇixer un bloc que,
                    tal com estÖ triat, aniria a dalt (Crx P amb el
                    programa a Alta, o Crx D amb les dades a Alta). Si la pantalla era de 40 columnes,
-APPHI passa a 80 i en sortir la torna com era.
+GEMGO passa a 80 i en sortir la torna com era.
 
 Les mesures: GEMHI (0.9 o posterior) apunta, cada cop que tanques una
 aplicaci¢ GEM, el que ha fet servir a GEMHI.LOG, a la mateixa carpeta
 que GEMHI.COM (per a cada aplicaci¢, el mÖxim de totes les vegades).
-APPHI troba el GEMHI.LOG sol mentre cerca les aplicacions, sigui a la
+GEMGO troba el GEMHI.LOG sol mentre cerca les aplicacions, sigui a la
 carpeta que sigui de la unitat. Com mÇs treballis amb una aplicaci¢ (documents
 grans, programes llargs), mÇs fidel Çs la mesura. Per tornar a
 comenáar, esborra GEMHI.LOG.
@@ -86,14 +88,14 @@ La marca
 --------
 4 bytes a l'offset 1Ch de la capáalera MZ del .APP:
    'G' 'H'  programa ('A' alta, 'B' baix)  dades ('A' alta, 0 baix)
-Amb els valors per defecte (Alta / Conv) no hi ha marca: APPHI hi
-torna a posar els 4 zeros. APPHI nomÇs marca fitxers que tenen aquests
+Amb els valors per defecte (Alta / Conv) no hi ha marca: GEMGO hi
+torna a posar els 4 zeros. GEMGO nomÇs marca fitxers que tenen aquests
 4 bytes a zero (o ja hi tenen una marca) i que no hi tenen la taula de
 reubicacions; aix°, treure la marca deixa el fitxer exactament com era.
 Conserva la data i l'hora del fitxer.
 
 Marca llarga (des de la 0.3): si a l'offset 1Ch no s'hi pot posar (hi
-ha la taula de reubicacions o altres dades del muntador), APPHI busca
+ha la taula de reubicacions o altres dades del muntador), GEMGO busca
 un lloc lliure mÇs a fons dins la capáalera: el farciment que hi ha
 entre la taula de reubicacions i el programa, que el DOS no carrega
 mai. Hi busca 8 bytes seguits iguals: zeros, FFh (com al BASIC2) o
@@ -132,18 +134,19 @@ Coses a saber
 - Llista de fins a 100 aplicacions, rutes de fins a 65 carÖcters.
 - Per obrir aplicacions amb Intro cal X:\GEM.BAT (el que engega el
   GEM, amb GEMHI si el fas servir) que passi el parÖmetre a GEMVDI
-  (GEMHI GEMVDI %1 %2). Mentre el GEM corre, APPHI ocupa uns 20 KB de
+  (GEMHI GEMVDI %1 %2). Mentre el GEM corre, GEMGO ocupa uns 20 KB de
   memïria convencional.
-- Muntatge: nasm -f bin APPHI.ASM -o APPHI.COM (el font Çs en CP850).
+- Muntatge: nasm -f bin GEMGO.ASM -o GEMGO.COM (el font Çs en CP850).
 
 Fitxers
 -------
-APPHI.COM   el programa
-APPHI.ASM   el codi font
-APPHI.TXT   aquest fitxer
+GEMGO.COM   el programa
+GEMGO.ASM   el codi font
+GEMGO.TXT   aquest fitxer
 
 Historial
 ---------
+0.14 23-11-2026  Es diu GEMGO (abans APPHI). F1: finestra d'ajuda.
 0.13 22-11-2026  Amb GEMHI 0.14, sense marca el programa d'una
                  aplicaci¢ va a baix (Conv); els accessoris i
                  l'escriptori (DESKTOP.APP), a dalt. Programa d'una

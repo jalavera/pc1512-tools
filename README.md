@@ -9,7 +9,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [LOADHI](LOADHI/) | 0.22 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM |
 | [MEM](MEM/) | 0.27 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos |
 | [GEMHI](GEMHI/) | 0.18 | Engega el GEM 2.0 amb GEMVDI, AMSTRAD.SYS, els accessoris i els recursos a la memòria superior (uns 120 KB més de convencional); dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
-| [APPHI](APPHI/) | 0.13 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; Intro les obre amb el GEM |
+| [GEMGO](GEMGO/) | 0.14 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; Intro les obre amb el GEM; F1, ajuda (abans APPHI) |
 | [CHARMAP](CHARMAP/) | 0.7 | Accessori del GEM 2.0: mapa de caràcters que escriu una cadena a l'aplicació del davant |
 | [DOSSHELL](DOSSHELL/) | 0.2 | Accessori del GEM 2.0: Shell de DOS des de qualsevol aplicació GEM; per tornar, EXIT |
 | [EINES](EINES/) | 0.3 | Accessori del GEM 2.0: CHARMAP i una Shell de DOS en un sol fitxer (el GEM 2.0 només carrega 3 accessoris) |
@@ -38,7 +38,7 @@ nasm -f bin LOADHI/LOADHI.ASM -o LOADHI.COM
 nasm -f bin -DTRACE LOADHI/LOADHI.ASM -o LOADHIT.COM   (versió de prova)
 nasm -f bin MEM/MEM.ASM -o MEM.COM
 nasm -f bin GEMHI/GEMHI.ASM -o GEMHI.COM
-nasm -f bin APPHI/APPHI.ASM -o APPHI.COM
+nasm -f bin GEMGO/GEMGO.ASM -o GEMGO.COM
 nasm -f bin CHARMAP/CHARMAP.ASM -o CHARMAP.ACC   (accessori del GEM)
 nasm -f bin DOSSHELL/DOSSHELL.ASM -o DOSSHELL.ACC (accessori del GEM)
 nasm -f bin EINES/EINES.ASM -o EINES.ACC         (accessori del GEM)
@@ -78,8 +78,8 @@ català.
   al MS-DOS 3.20 de l'Amstrad.
 - Per a la memòria superior: RAM entre 640 KB i 1 MB (per exemple les
   targetes de memòria *Generic PC/XT* de 86Box).
-- GEMHI, APPHI, CHARMAP, DOSSHELL i EINES: el GEM 2.0 de l'Amstrad PC1512.
-  GEMHI necessita la zona alta de LOADHI; APPHI és per fer-lo servir amb
+- GEMHI, GEMGO, CHARMAP, DOSSHELL i EINES: el GEM 2.0 de l'Amstrad PC1512.
+  GEMHI necessita la zona alta de LOADHI; GEMGO és per fer-lo servir amb
   GEMHI 0.14 o posterior (les mesures, amb la 0.9 o posterior).
 
 ## Codi d'altres

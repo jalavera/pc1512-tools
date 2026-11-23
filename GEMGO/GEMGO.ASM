@@ -1,13 +1,14 @@
 ; =====================================================================
-;  APPHI.ASM - Tria on carrega GEMHI cada aplicacio GEM (.APP):
+;  GEMGO.ASM - Tria on carrega GEMHI cada aplicacio GEM (.APP):
+;              (fins a la 0.13 es deia APPHI). F1: ajuda (0.14).
 ;              programa i dades, a la memoria alta o a la convencional;
 ;              i cada accessori (.ACC, nomes el programa: GEMHI 0.7).
-;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.13
+;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.14
 ;  Intro (0.9): obre l'aplicacio triada amb X:\GEM.BAT ruta (COMMAND /C),
 ;  i en tornar en rellegeix les mesures.
 ;
-;  Muntatge:   nasm -f bin APPHI.ASM -o APPHI.COM
-;  Us:         APPHI [unitat:]          p. ex.  APPHI   o   APPHI D:
+;  Muntatge:   nasm -f bin GEMGO.ASM -o GEMGO.COM
+;  Us:         GEMGO [unitat:]          p. ex.  GEMGO   o   GEMGO D:
 ;
 ;  Cerca tots els .APP de la unitat (per defecte C:), en mostra la llista
 ;  i, per a cadascun, la marca que porta i on el carrega GEMHI. Amb P i D
@@ -18,7 +19,7 @@
 ;     'G','H', programa ('A' alta, 'B' convencional), dades ('A' alta, 0)
 ;  Sense marca (4 zeros): programa a dalt si hi cap, dades a baix, que es
 ;  el que fa GEMHI amb qualsevol .APP. Si es tornen a triar els valors per
-;  defecte, APPHI hi torna a posar els 4 zeros: el fitxer queda com era.
+;  defecte, GEMGO hi torna a posar els 4 zeros: el fitxer queda com era.
 ;  Nomes es marquen fitxers que tenen aquests 4 bytes a zero (o ja hi
 ;  tenen una marca) i que no hi tenen la taula de reubicacions: aixi
 ;  treure la marca deixa el fitxer exactament com era.
@@ -29,7 +30,7 @@
 ;  20h. Treure-la hi torna a posar els 8 bytes f (0.4: tambe FFh, com al
 ;  BASIC2). GEMHI 0.8 o posterior la llegeix.
 ;  Columnes (0.6): Prog = KB del bloc del programa (mesurat per GEMHI 0.9
-;  a GEMHI.LOG, que APPHI busca a tota la unitat (0.7), o, amb ~, calculat
+;  a GEMHI.LOG, que GEMGO busca a tota la unitat (0.7), o, amb ~, calculat
 ;  de la capcalera); Dades = punta de
 ;  dades; Bl = blocs de dades; Crx = si ha demanat fer creixer el bloc
 ;  del programa (P) o un de dades (D). Pantalla en 80 columnes.
@@ -1233,7 +1234,7 @@ inici:  cld
         mov     bh, 0
         int     10h
         mov     [curs], cx
-        mov     si, 81h                 ; unitat: APPHI D:
+        mov     si, 81h                 ; unitat: GEMGO D:
 .s:     lodsb
         cmp     al, ' '
         je      .s
@@ -1290,7 +1291,10 @@ inici:  cld
 
 tecla:  xor     ah, ah
         int     16h
-        cmp     al, 27
+        cmp     ax, 3B00h               ; F1: ajuda
+        jne     .t0
+        jmp     ajuda
+.t0:    cmp     al, 27
         je      surt
         cmp     al, 13
         jne     .t1
@@ -1544,6 +1548,87 @@ obre:   mov     ax, [sel]
         call    detall
         jmp     tecla
 
+; F1: finestra d'ajuda damunt la llista; en tancar-la, torna el que hi
+; havia a sota (no es redibuixa res mes)
+AJ_F    equ     2               ; fila i columna de la finestra
+AJ_C    equ     5
+AJ_AL   equ     19              ; alt i ample (amb la vora)
+AJ_AM   equ     70
+A_AJ    equ     1Fh             ; blanc sobre blau
+ajuda:  push    ds                      ; guarda el que hi ha a sota
+        push    es
+        push    cs
+        pop     es
+        mov     ds, [cs:vseg]
+        mov     di, ajsave
+        mov     bx, AJ_F
+.g:     mov     ax, 160
+        mul     bx
+        add     ax, AJ_C*2
+        mov     si, ax
+        mov     cx, AJ_AM
+        rep     movsw
+        inc     bx
+        cmp     bx, AJ_F+AJ_AL
+        jb      .g
+        pop     es
+        pop     ds
+        push    es                      ; la finestra
+        mov     es, [vseg]
+        mov     si, t_aj
+        mov     bx, AJ_F
+.l:     mov     ax, 160
+        mul     bx
+        add     ax, AJ_C*2
+        mov     di, ax
+        mov     cx, AJ_AM
+        mov     ah, A_AJ
+.c:     lodsb
+        stosw
+        loop    .c
+        inc     bx
+        cmp     bx, AJ_F+AJ_AL
+        jb      .l
+        pop     es
+        xor     ah, ah                  ; qualsevol tecla la tanca
+        int     16h
+        push    es                      ; torna el que hi havia
+        mov     es, [vseg]
+        mov     si, ajsave
+        mov     bx, AJ_F
+.r:     mov     ax, 160
+        mul     bx
+        add     ax, AJ_C*2
+        mov     di, ax
+        mov     cx, AJ_AM
+        rep     movsw
+        inc     bx
+        cmp     bx, AJ_F+AJ_AL
+        jb      .r
+        pop     es
+        jmp     tecla
+
+t_aj:
+        db      'ษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป'
+        db      'บ                           GEMGO - Ajuda                            บ'
+        db      'บ                                                                    บ'
+        db      'บ Tria on carrega GEMHI el programa i les dades de cada aplicaciข    บ'
+        db      'บ (.APP) i de cada accessori (.ACC). Es desa al moment al fitxer.    บ'
+        db      'บ                                                                    บ'
+        db      'บ ', 18h, 19h, ' ReP…g AvP…g Inici Fi  tria      Intro  obre l', 27h, 'aplicaciข amb GEM บ'
+        db      'บ P  programa Alta / Conv             D  dades Alta / Conv           บ'
+        db      'บ T  treu la marca (el fitxer com era)  Esc  surt          F1  ajuda บ'
+        db      'บ                                                                    บ'
+        db      'บ Prog, Dades  KB mesurats per GEMHI (~: calculat de la capalera)   บ'
+        db      'บ Bl           blocs de dades       Crx  ha demanat crixer (P, D)   บ'
+        db      'บ                                                                    บ'
+        db      'บ Vermell: el que far… GEMHI.  Verd: sense GEMHI.                    บ'
+        db      'บ Groc: arriscat (Crx P o D amb aquella part a Alta), o no es        บ'
+        db      'บ pot marcar (motiu a sota de la llista).                            บ'
+        db      'บ                                                                    บ'
+        db      'บ                     Prem una tecla per tornar                      บ'
+        db      'ศออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ'
+
 surt:   cmp     byte [vcanv], 0         ; torna el mode de video
         je      .n
         xor     ah, ah
@@ -1571,11 +1656,11 @@ neteja: mov     ax, 0600h
 ; ---------------------------------------------------------------------
 ;  Textos (CP850)
 ; ---------------------------------------------------------------------
-t_tit   db      ' APPHI 0.13 - On carrega GEMHI (0.14) les aplicacions i els accessoris del GEM', 0
+t_tit   db      ' GEMGO 0.14 - On carrega GEMHI (0.18) les aplicacions i els accessoris del GEM', 0
 t_cerc  db      ' Cercant les aplicacions (.APP) i els accessoris (.ACC)...', 0
 t_cap1  db      ' Nom          Carpeta                         Prog Dades  Bl Crx  Tria P Tria D', 0
 t_cap0  db      ' No hi ha cap aplicaciข (.APP) ni accessori (.ACC) en aquesta unitat. Prem una tecla.', 0
-t_tecl  db      ' ', 18h, 19h, ' tria  Intro obre amb el GEM  P programa  D dades  T treu marca  Esc surt', 0
+t_tecl  db      ' F1 ajuda  ', 18h, 19h, ' tria  Intro obre  P programa  D dades  T treu marca  Esc surt', 0
 t_sp    db      ' ', 0
 t_3p    db      '...', 0
 t_mes   db      'ฏ', 0
@@ -1631,8 +1716,8 @@ t_noll2 db      " No s'ha pogut llegir el fitxer.", 0
 t_nomar db      ' Amb GEMHI: com sense marca (a dalt si hi cap; dades a baix).', 0
 t_noesc db      " No s'ha pogut escriure (fitxer noms de lectura?).", 0
 t_tot   db      '\*.*', 0
-t_us    db      'APPHI 0.13 - On carrega GEMHI les aplicacions i accessoris GEM', 13, 10
-        db      '้s: APPHI [unitat:]      (per defecte C:)', 13, 10, '$'
+t_us    db      'GEMGO 0.14 - On carrega GEMHI les aplicacions i accessoris GEM', 13, 10
+        db      '้s: GEMGO [unitat:]      (per defecte C:)', 13, 10, '$'
 
 ; ---------------------------------------------------------------------
 ;  Dades
@@ -1669,4 +1754,5 @@ dtas    times 43*MAXNIV db 0
 apps:
 hbig    equ     apps + MAXAPP*ESIZE     ; capcalera llegida (HMAX bytes)
 logbuf  equ     hbig + HMAX             ; GEMHI.LOG (LOGMAX*24 bytes)
-fi_mem  equ     logbuf + LOGMAX*24 + 800h  ; i la pila
+ajsave  equ     logbuf + LOGMAX*24      ; F1: el que hi ha sota la finestra
+fi_mem  equ     ajsave + 19*70*2 + 800h  ; i la pila (finestra F1: 19x70)

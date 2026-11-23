@@ -42,7 +42,7 @@
 ;  'G','H', programa, dades. Programa 'B': a la convencional (si no, a
 ;  dalt si hi cap). Dades 'A' (0.6): el que l'aplicacio demani amb 48h
 ;  va primer a dalt i, si no hi cap, a baix (si no, a baix). La posa i
-;  la treu APPHI.
+;  la treu GEMGO.
 ;  Marca llarga (0.8): si a 1Ch no hi ha 'GH', es busca 'GHMK', programa,
 ;  dades a la resta de la capcalera (fins a 1 KB), en llocs alineats a 8.
 ;  Registre (0.9): mentre corre un .APP engegat pel GEM, GEMHI en compta
@@ -50,7 +50,7 @@
 ;  creixer un bloc (4Ah amb mes paragrafs: el del programa o un de
 ;  dades). Quan acaba (4Ch), ho desa a GEMHI.LOG, a la mateixa carpeta
 ;  que GEMHI.COM (0.10; si no se sap, a l'arrel de la unitat del GEM): registres de 24 bytes, un per aplicacio, amb el maxim de totes
-;  les vegades. APPHI ho llegeix.
+;  les vegades. GEMGO ho llegeix.
 ;  Accessoris (0.7): mentre el GEM arrenca, quan obre un .ACC (3Dh) que
 ;  porta la marca amb programa 'B', la peticio de memoria seguent prou
 ;  gran per a la seva imatge va a la convencional.

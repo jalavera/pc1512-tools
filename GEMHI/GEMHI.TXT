@@ -29,7 +29,7 @@ aplicaci¢ es torna a provar. La mem•ria que l'aplicaci¢ demana despr‚s
 (dibuixos, documents, programes BASIC...) va a la convencional, que
 queda lliure gaireb‚ sencera.
 Marques (des de la 0.5): cada .APP pot portar una marca que diu on
-vol el programa i on vol les dades. La posa i la treu APPHI.
+vol el programa i on vol les dades. La posa i la treu GEMGO.
 - Programa a baix (0.5): GEMHI el carrega a la convencional. Per a
   aplicacions amb dades grans que val m‚s posar a dalt. La porta el
   SOLITARI 0.2: el programa (62 KB) va a baix i les cartes (103 KB),
@@ -45,7 +45,7 @@ vol el programa i on vol les dades. La posa i la treu APPHI.
   convencional. Per deixar la mem•ria alta per a les aplicacions.
 - Marca llarga (0.8): si a l'offset 1Ch no hi ha marca, GEMHI la
   busca a la resta de la cap‡alera ('GHMK', programa, dades). La posa
-  APPHI 0.3 als fitxers on 1Ch no es pot fer servir.
+  GEMGO 0.3 als fitxers on 1Ch no es pot fer servir.
 Sense marca: programa a dalt si hi cap, dades a baix.
 
 Mesures (0.9): mentre corre una aplicaci¢ GEM (.APP), GEMHI compta la
@@ -53,7 +53,7 @@ mem•ria de dades que demana (la punta i quants blocs) i si demana fer
 cr‚ixer un bloc que ja t‚ (el del programa o un de dades). Quan la
 tanques, ho apunta a GEMHI.LOG, a la mateixa carpeta que GEMHI.COM
 (0.10; si no la pot saber, a l'arrel de la unitat del GEM), un registre
-per aplicaci¢ amb el m…xim de totes les vegades. APPHI 0.6 ho mostra.
+per aplicaci¢ amb el m…xim de totes les vegades. GEMGO 0.6 ho mostra.
 Per tornar a comen‡ar les mesures, esborra GEMHI.LOG.
 No es toquen: els programes de DOS (.COM, .EXE) que engeguis des de
 l'escriptori, ni el que s'executi des d'una aplicaci¢ o des de la
@@ -158,14 +158,14 @@ Historial
                  aquesta pila i l'esborra: tornava a 0000:0000. Ara
                  GEMHI es guarda aquesta adre‡a a part. De moment el
                  programa de les aplicacions continua anant a baix
-                 si no porta la marca 'A' (APPHI: P a Alta).
+                 si no porta la marca 'A' (GEMGO: P a Alta).
 0.14 22-11-2026  Sense marca, el programa de les aplicacions va a baix
                  (EXEC normal): el GEM 2.0 es penja quan torna d'una
                  aplicaci¢ que ha estat a dalt (proves PROVA1-5 i la
                  versi¢ amb xiulets: GEMHI hi torna b‚, el GEM no
                  continua). L'escriptori (DESKTOP.APP) i els accessoris
                  continuen a dalt; les dades amb la marca D, tamb‚. Amb
-                 la marca de programa 'A' (APPHI: P a Alta) encara es
+                 la marca de programa 'A' (GEMGO: P a Alta) encara es
                  prova a dalt.
 0.13 22-11-2026  Les aplicacions carregades a dalt es penjaven totes en
                  sortir (les proves PROVA1-5 ho han demostrat). El DOS
@@ -182,13 +182,13 @@ Historial
                  GEMHI carrega i torna amb una pila pr•pia i no toca la
                  del GEM.
 0.10 22-11-2026  GEMHI.LOG es desa al costat de GEMHI.COM, no a l'arrel.
-0.9  22-11-2026  Mesures de cada aplicaci¢ a GEMHI.LOG (per a APPHI
+0.9  22-11-2026  Mesures de cada aplicaci¢ a GEMHI.LOG (per a GEMGO
                  0.6). Nom‚s provada al simulador.
-0.8  22-11-2026  Llegeix tamb‚ la marca llarga (APPHI 0.3). Nom‚s
+0.8  22-11-2026  Llegeix tamb‚ la marca llarga (GEMGO 0.3). Nom‚s
                  provada al simulador.
-0.7  22-11-2026  Accessoris amb la marca "a baix" (la posa APPHI 0.2).
+0.7  22-11-2026  Accessoris amb la marca "a baix" (la posa GEMGO 0.2).
                  Nom‚s provada al simulador.
-0.6  22-11-2026  Marca "dades a dalt" (la posa APPHI). Nom‚s provada al
+0.6  22-11-2026  Marca "dades a dalt" (la posa GEMGO). Nom‚s provada al
                  simulador.
 0.5  22-11-2026  Els .APP amb la marca "carrega'm a baix" van a la
                  convencional (SOLITARI 0.2). Nom‚s provada al simulador.
