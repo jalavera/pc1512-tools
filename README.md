@@ -23,6 +23,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [SEARCH](SEARCH/) | 1.0 | Cerca un arxiu a totes les unitats i directoris, amb mida, data, atributs i CRC32 |
 | [DIRCLEAN](DIRCLEAN/) | 1.1 | Neteja els directoris FAT12/FAT16: entrades LFN òrfenes, brossa de macOS i entrades invàlides |
 | [DELTREE](DELTREE/) | 0.1 | El DELTREE del MS-DOS 6.22 per al MS-DOS 3.20: esborra directoris sencers (també arxius ocults, de sistema i de només lectura), amb comodins i /Y |
+| [NOTE](NOTE/) | 0.2 | NOTE i FREENOTE: marca la memòria i després treu els residents (TSR) que no es desinstal·len sols, per número o per nom (amb comodins), a memòria baixa, alta o mixta |
 | [WAIT](WAIT/) | 0.1 | Espera amb compte enrere per als .BAT, aturable amb una tecla |
 | [ROWS25](ROWS25/) | 0.1 | Posa a la BIOS del PC1512 el nombre de files de la pantalla (perquè MEM /P i altres parin a cada pantalla) |
 | [GEMPATCH](GEMPATCH/) | 0.1 | Canvia els temps de doble clic del GEM (GEM.EXE), per a l'avançament ràpid de 86Box |
@@ -215,6 +216,7 @@ nasm -f bin EINES/EINES.ASM -o EINES.ACC         (accessori del GEM)
 nasm -f bin IOPATCH6/IOPATCH6.ASM -o IOPATCH6.COM
 cd IOPATCH && sh BUILD.SH                (IOPATCH.COM i IOCONFIG.COM)
 cd HIDOS && sh BUILD.SH                  (HIDOS.COM)
+cd NOTE && sh BUILD.SH                   (NOTE.COM i FREENOTE.COM)
 cd SOLITARI && sh BUILD.SH               (SOLITARI.APP; cal python3)
 cd VINTIU && sh BUILD.SH                 (VINTIU.APP; cal python3)
 nasm -f bin XPATH/XPATH.ASM -o XPATH.COM          (i igual WAIT, SEARCH,
@@ -243,8 +245,8 @@ català.
 ## Requisits
 
 - MS-DOS 3.1 a 3.3 (provat amb el 3.20 de l'Amstrad PC1512).
-  IOPATCH6 és per al MS-DOS 6.22. XPATH, SEARCH, DIRCLEAN i DELTREE
-  funcionen del 3.x al 6.x; WAIT, AMSMOUSE i GEMPATCH, des del 2.0. HIDOS és per
+  IOPATCH6 és per al MS-DOS 6.22. XPATH, SEARCH, DIRCLEAN, DELTREE i
+  NOTE/FREENOTE funcionen del 3.x al 6.x; WAIT, AMSMOUSE i GEMPATCH, des del 2.0. HIDOS és per
   al MS-DOS 3.20 de l'Amstrad.
 - Per a la memòria superior: RAM entre 640 KB i 1 MB (per exemple les
   targetes de memòria *Generic PC/XT* de 86Box).
