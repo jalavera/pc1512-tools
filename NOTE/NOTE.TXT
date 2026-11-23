@@ -1,0 +1,103 @@
+NOTE i FREENOTE 0.2 - Treure de la mem•ria residents que no es desinstalúlen sols
+=================================================================================
+
+Per a MS-DOS 3.20 o superior en un 8086/8088 (PC1512). Funcionen amb
+residents a la mem•ria baixa, a l'alta (carregats amb LOADHI, o amb
+LOADHIGH a DOS 5/6) o repartits entre totes dues. Els missatges s¢n en
+castell…, com els del MS-DOS.
+
+Contingut del disquet
+  NOTE.COM       fa les marques (es queda resident la primera vegada)
+  FREENOTE.COM   treu els residents
+  NOTE.TXT       aquest fitxer
+  NOTE.ASM, FREENOTE.ASM, NOTE.INC, BUILD.SH   el codi font (NASM)
+
+Instalúlaci¢
+  Copia NOTE.COM i FREENOTE.COM a un directori del PATH.
+  Per recompilar-los:  sh BUILD.SH   (o nasm -f bin NOTE.ASM -o NOTE.COM
+  i nasm -f bin FREENOTE.ASM -o FREENOTE.COM, amb NOTE.INC al costat)
+
+Com funciona
+  La primera vegada NOTE es queda resident (2.608 bytes) i fa la
+  marca 1. Desa els 256 vectors d'interrupci¢ i vigila les dues
+  maneres que t‚ un programa de quedar-se resident (INT 21h/31h i
+  INT 27h). Cada vegada que un programa es queda resident, NOTE n'anota
+  el PSP, el nom i quins vectors ha canviat, amb el valor anterior.
+  Les execucions segents de NOTE no ocupen m‚s mem•ria: nom‚s afegeixen
+  una marca nova.
+
+  Amb aix• FREENOTE sap exactament quŠ ha de restaurar de cada resident,
+  i pot treure'n un del mig si ‚s segur.
+
+és
+  NOTE                 fa una marca (la primera vegada, s'instalúla)
+
+  FREENOTE             treu els residents posteriors a l'£ltima marca
+                       i esborra la marca; si era l'£nica, tamb‚ treu
+                       NOTE
+  FREENOTE /K          el mateix, per• conserva la marca
+  FREENOTE n [n...]    treu nom‚s els residents indicats (n£meros de
+                       FREENOTE /L), si ‚s segur
+  FREENOTE nom [...]   treu els residents que es diuen aix¡; admet els
+                       comodins * i ? (KEY*, TSR?), i l'extensi¢ no
+                       compta (KEYBX i KEYBX.COM s¢n el mateix)
+  /P /U /A             si un nom sense comodins correspon a m‚s d'un
+                       resident (el mateix programa carregat dues
+                       vegades): /P el primer, /U el darrer, /A tots.
+                       Sense cap d'aquestes opcions no en treu cap i
+                       diu quins n£meros tenen. Un nom amb comodins
+                       els tria tots, o el primer/darrer amb /P o /U.
+  FREENOTE /T          ho treu tot: residents, marques i NOTE
+  FREENOTE /L          llista les marques i els residents
+
+  Exemple:
+     C:\> NOTE
+     C:\> LOADHI KEYBX
+     C:\> MOUSE
+     C:\> FREENOTE /L
+     NOTE 0.1 en 0706 (memoria convencional), 2608 bytes.
+     --- Marca 1 ---
+       1  KEYBX     PSP BE01  alta     5120 bytes  INT 09 16
+       2  MOUSE     PSP 07AA  baja     9312 bytes  INT 10 33
+     C:\> FREENOTE 2           (treu nom‚s MOUSE)
+     C:\> FREENOTE MOUSE       (el mateix, pel nom)
+     C:\> FREENOTE             (treu KEYBX, la marca i NOTE)
+
+  Es poden barrejar n£meros i noms: FREENOTE 3 KEY* MOUSE.
+  Si algun nom no correspon a cap resident, avisa i no treu res.
+
+  "baja", "alta" i "mixta" diuen on s¢n els blocs de mem•ria del
+  resident (el programa, el seu entorn i els blocs que hagi demanat).
+
+Seguretat
+  Abans de tocar res, FREENOTE simula tota l'operaci¢. No fa res i
+  diu per quŠ si:
+  - un vector d'un resident que s'ha de treure l'ha enganxat despr‚s un
+    altre resident que es queda ("la INT 09h ha sido enganchada
+    despu‚s..."): cal treure'ls tots dos alhora (FREENOTE 1 2) o en
+    ordre invers;
+  - algun vector continuaria apuntant a mem•ria que s'allibera.
+  Si NOTE no es pot treure perquŠ un altre programa ha enganxat la
+  INT 21h o la INT 27h per sobre seu, es queda en mem•ria i ho diu.
+  Si un resident ja s'havia desinstalúlat sol, el treu de la llista.
+
+L¡mits
+  - 24 registres (marques + residents) i 48 vectors canviats en total.
+    Si s'omplen, els residents nous no s'anoten i FREENOTE /L ho avisa.
+  - Nom‚s coneix els residents carregats despr‚s de la primera marca.
+  - No tanca els arxius que el resident tingu‚s oberts, ni restaura
+    altres coses que hagi pogut canviar a m‚s dels vectors (com fan
+    la majoria d'eines d'aquest tipus).
+  - A DOS 5/6, mentre treballen, enllacen la mem•ria superior a la
+    cadena de DOS, i en acabar la deixen com estava.
+
+Consells
+  - Carrega NOTE al principi de l'AUTOEXEC.BAT (o amb LOADHI, per no
+    gastar mem•ria baixa) i FREENOTE /L et dir… sempre quŠ hi ha.
+  - Per poder tornar a l'estat d'un moment concret, fes-hi una marca
+    (NOTE) i despr‚s FREENOTE treur… tot el que hi hagi a partir d'ella.
+
+Historial
+  0.2 (23/11/2026)  FREENOTE: treure per nom, amb comodins * i ?, i
+                    /P, /U, /A per als noms repetits.
+  0.1 (23/11/2026)  Primera versi¢.
