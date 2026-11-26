@@ -1,4 +1,4 @@
-LOADHI per a MS-DOS 3.x                                     versi¢ 0.24
+LOADHI per a MS-DOS 3.x                                     versi¢ 0.28
 
 Quä Çs
 ------
@@ -319,8 +319,10 @@ Si el programa n'executa d'altres (un men£ com APPHI, un .BAT, el
 GEM...), a la primera ordre d'executar que fa, LOADHI la destapa: els
 programes que executa van a la memïria convencional, com sempre. Per
 aixï LOADHI posa un ganxo petit a la INT 21h; si el programa es queda
-resident i s'hi posa al davant, el ganxo queda desactivat i ocupa 48
-bytes a dalt ("LOADHI", del sistema).
+resident i s'hi posa al davant, el ganxo queda desactivat i ocupa 128
+bytes a dalt ("LOADHI", del sistema). Quan aquell resident es treu (p. ex.
+el PC Tools), el ganxo torna a ser el primer, i a la crida segÅent al
+DOS es treu ell sol i allibera el bloc (0.27). No cal fer res.
   LOADHI APPHI      APPHI a dalt; el GEM i les aplicacions que obre, a
                     baix
 Mentre el programa corre, LOADHI n'Çs el pare i espera que acabi. Des de
@@ -332,6 +334,21 @@ SHELL= o si ha de tapar mÇs de 32 blocs, es queda sencer com abans.
 
 Historial
 ---------
+LOADHI 0.28 26-11-2026  El nom del bloc del ganxo Çs "LOADHI" net (MEM hi
+                        mostrava lletres de mÇs, "LOADHI=" o "LOADHI.◊").
+LOADHI 0.27 26-11-2026  El ganxo desactivat es treu ell sol quan el resident
+                        que tenia al davant ja no hi Çs (a la crida
+                        segÅent al DOS): no cal tornar a executar LOADHI.
+LOADHI 0.26 26-11-2026  El ganxo de 48 bytes ("LOADHI" a MEM) que queda quan
+                        un resident s'hi posa al davant s'allibera en
+                        executar LOADHI un altre cop, si el resident ja
+                        s'ha tret.
+LOADHI 0.25 26-11-2026  Un resident carregat amb LOADHI queda com a fill de
+                        qui ha engegat LOADHI (COMMAND.COM), amb les seves
+                        adreces de sortida, i no com a fill de LOADHI, que
+                        ja no hi Çs. Els residents que es treuen ells
+                        mateixos (PC Tools /R amb Ctrl+F3) tornaven a
+                        LOADHI i es penjaven; ara tornen al COMMAND.COM.
 LOADHI 0.24 26-11-2026  El tros que espera que acabi el programa va a dalt
                         de tot de la zona alta; a la convencional nomÇs hi
                         queden el PSP i l'entorn de LOADHI (uns 400 bytes).
