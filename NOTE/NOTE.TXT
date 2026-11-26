@@ -1,4 +1,4 @@
-NOTE i FREENOTE 0.2 - Treure de la mem•ria residents que no es desinstalúlen sols
+NOTE i FREENOTE 0.3 - Treure de la mem•ria residents que no es desinstalúlen sols
 =================================================================================
 
 Per a MS-DOS 3.20 o superior en un 8086/8088 (PC1512). Funcionen amb
@@ -31,6 +31,13 @@ Com funciona
 
 és
   NOTE                 fa una marca (la primera vegada, s'instalúla)
+  NOTE /D              treu NOTE de la mem•ria encara que hi hagi
+                       marques, sense preguntar res. Les marques es
+                       perden; els residents que s'hi havien anotat es
+                       queden en mem•ria (ja no es podran treure amb
+                       FREENOTE). Si un altre programa ha enganxat la
+                       INT 21h o la INT 27h per sobre de NOTE, no el
+                       treu i ho diu.
 
   FREENOTE             treu els residents posteriors a l'£ltima marca
                        i esborra la marca; si era l'£nica, tamb‚ treu
@@ -98,6 +105,8 @@ Consells
     (NOTE) i despr‚s FREENOTE treur… tot el que hi hagi a partir d'ella.
 
 Historial
+  0.3 (26/11/2026)  NOTE /D: NOTE es treu sol de la mem•ria, encara que
+                    hi hagi marques, sense preguntar.
   0.2 (23/11/2026)  FREENOTE: treure per nom, amb comodins * i ?, i
                     /P, /U, /A per als noms repetits.
   0.1 (23/11/2026)  Primera versi¢.

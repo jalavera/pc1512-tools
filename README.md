@@ -24,7 +24,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [SEARCH](SEARCH/) | 1.0 | Cerca un arxiu a totes les unitats i directoris, amb mida, data, atributs i CRC32 |
 | [DIRCLEAN](DIRCLEAN/) | 1.1 | Neteja els directoris FAT12/FAT16: entrades LFN òrfenes, brossa de macOS i entrades invàlides |
 | [DELTREE](DELTREE/) | 0.1 | El DELTREE del MS-DOS 6.22 per al MS-DOS 3.20: esborra directoris sencers (també arxius ocults, de sistema i de només lectura), amb comodins i /Y |
-| [NOTE](NOTE/) | 0.2 | NOTE i FREENOTE: marca la memòria i després treu els residents (TSR) que no es desinstal·len sols, per número o per nom (amb comodins), a memòria baixa, alta o mixta |
+| [NOTE](NOTE/) | 0.3 | NOTE i FREENOTE: marca la memòria i després treu els residents (TSR) que no es desinstal·len sols, per número o per nom (amb comodins), a memòria baixa, alta o mixta. `NOTE /D` treu NOTE sense preguntar, encara que hi hagi marques |
 | [WAIT](WAIT/) | 0.1 | Espera amb compte enrere per als .BAT, aturable amb una tecla |
 | [ROWS25](ROWS25/) | 0.1 | Posa a la BIOS del PC1512 el nombre de files de la pantalla (perquè MEM /P i altres parin a cada pantalla) |
 | [GEMPATCH](GEMPATCH/) | 0.1 | Canvia els temps de doble clic del GEM (GEM.EXE), per a l'avançament ràpid de 86Box |

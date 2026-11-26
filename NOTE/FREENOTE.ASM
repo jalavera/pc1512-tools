@@ -1,5 +1,5 @@
 ; =====================================================================
-;  FREENOTE.ASM  -  FREENOTE.COM 0.2 per a MS-DOS 3.20 o superior (8086)
+;  FREENOTE.ASM  -  FREENOTE.COM 0.3 per a MS-DOS 3.20 o superior (8086)
 ;
 ;  Treu de la mem•ria els residents anotats per NOTE i restaura els
 ;  vectors que havien canviat. Funciona amb residents a la mem•ria
@@ -1536,7 +1536,7 @@ msg_mrm2    db  " eliminada.",0
 msg_unload  db  "NOTE desinstalado (",0
 msg_cantun  db  "NOTE se queda en memoria: la INT 21h o 27h ha sido enganchada por otro programa.",13,10,0
 msg_total   db  "Memoria liberada: ",0
-msg_l1      db  "NOTE 0.2 en ",0
+msg_l1      db  "NOTE 0.3 en ",0
 msg_comma   db  ", ",0
 msg_lconv   db  "(memoria convencional)",0
 msg_lsup    db  "(memoria superior)",0

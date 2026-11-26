@@ -1,5 +1,5 @@
 ; =====================================================================
-;  NOTE.ASM  -  NOTE.COM 0.2 per a MS-DOS 3.20 o superior (8086)
+;  NOTE.ASM  -  NOTE.COM 0.3 per a MS-DOS 3.20 o superior (8086)
 ;
 ;  Marca l'estat de la memïria perquä FREENOTE pugui treure desprÇs els
 ;  residents (TSR) que no es poden desinstal˙lar sols.
@@ -10,6 +10,8 @@
 ;  un programa es queda resident, n'anota el PSP, el nom i quins
 ;  vectors ha canviat (valor anterior i valor nou). Les execucions
 ;  segÅents de NOTE no ocupen mÇs memïria: nomÇs afegeixen una marca.
+;  NOTE /D treu NOTE de la memïria encara que hi hagi marques, sense
+;  preguntar res; els residents es queden on s¢n.
 ;
 ;  Compilar:  nasm -f bin NOTE.ASM -o NOTE.COM
 ; =====================================================================
@@ -269,7 +271,7 @@ install:
         int     21h
 .verok: mov     sp,stack_top
         cld
-        ; parÖmetres: nomÇs /?
+        ; parÖmetres: /? o /D
         mov     si,81h
 .pa:    lodsb
         cmp     al,' '
@@ -282,8 +284,13 @@ install:
         jne     .bad
         lodsb
         cmp     al,'?'
+        je      .hlp
+        and     al,0DFh                 ; maj£scula
+        cmp     al,'D'
         jne     .bad
-        mov     dx,msg_help
+        mov     byte [optdel],1
+        jmp     .pa
+.hlp:   mov     dx,msg_help
         call    puts
         mov     ax,4C00h
         int     21h
@@ -294,7 +301,10 @@ install:
 .pdone:
         call    umb_link
         call    find_note
-        or      ax,ax
+        cmp     byte [optdel],0
+        je      .nodel
+        jmp     remove_note
+.nodel: or      ax,ax
         jz      .new
         ; ---- ja hi Çs: afegeix una marca ----
         mov     es,ax
@@ -410,6 +420,109 @@ install:
         mov     cl,4
         shr     dx,cl
         mov     ax,3100h
+        int     21h
+
+; ---------------------------------------------------------------------
+;  NOTE /D: treu NOTE de la memïria sense preguntar.  AX = PSP o 0
+;  Les marques i el que s'hi havia anotat es perden; els residents
+;  carregats desprÇs es queden on s¢n.  Cal que les INT 21h i 27h
+;  encara apuntin a NOTE: si un altre programa les ha enganxat per
+;  sobre, el seu enllaá cap a NOTE quedaria trencat.
+; ---------------------------------------------------------------------
+remove_note:
+        or      ax,ax
+        jnz     .have
+        mov     dx,msg_nonote
+        call    puts
+        jmp     .err
+.have:  mov     [nseg],ax
+        mov     es,ax
+        xor     bx,bx
+        mov     ds,bx                   ; DS = 0: taula de vectors
+        mov     dx,[es:N_HO21]
+        cmp     [21h*4],dx
+        jne     .hooked
+        cmp     [21h*4+2],ax
+        jne     .hooked
+        mov     dx,[es:N_HO27]
+        cmp     [27h*4],dx
+        jne     .hooked
+        cmp     [27h*4+2],ax
+        jne     .hooked
+        cli
+        mov     dx,[es:N_OLD21]
+        mov     [21h*4],dx
+        mov     dx,[es:N_OLD21+2]
+        mov     [21h*4+2],dx
+        mov     dx,[es:N_OLD27]
+        mov     [27h*4],dx
+        mov     dx,[es:N_OLD27+2]
+        mov     [27h*4+2],dx
+        sti
+        push    cs
+        pop     ds
+        xor     cx,cx                   ; CL = marques, CH = residents
+        mov     dl,[es:N_NREC]
+        mov     si,N_RECS
+.cnt:   or      dl,dl
+        jz      .cntd
+        cmp     byte [es:si+R_TYPE],'M'
+        jne     .ct
+        inc     cl
+        jmp     .cn
+.ct:    inc     ch
+.cn:    add     si,RECSZ
+        dec     dl
+        jmp     .cnt
+.cntd:  mov     [nmarks],cl
+        mov     [ntsrs],ch
+        mov     word [es:N_SIG],0       ; que no es torni a trobar
+        mov     ax,es
+        dec     ax
+        push    es
+        mov     es,ax
+        mov     ax,[es:3]               ; mida del bloc (parÖgrafs)
+        pop     es
+        mov     cl,4
+        shl     ax,cl
+        mov     [delbytes],ax
+        mov     ah,49h                  ; allibera NOTE
+        int     21h
+        push    ds
+        pop     es
+        mov     di,linebuf
+        mov     si,msg_del1
+        call    put_str
+        mov     ax,[delbytes]
+        xor     dx,dx
+        call    put_dec32
+        mov     si,msg_del2
+        call    put_str
+        xor     ax,ax
+        mov     al,[nmarks]
+        xor     dx,dx
+        call    put_dec32
+        mov     si,msg_del3
+        call    put_str
+        xor     ax,ax
+        mov     al,[ntsrs]
+        xor     dx,dx
+        call    put_dec32
+        mov     si,msg_del4
+        call    put_str
+        call    out_line
+        call    umb_restore
+        mov     ax,4C00h
+        int     21h
+.hooked:
+        push    cs
+        pop     ds
+        mov     dx,msg_hooked
+        call    puts
+.err:   push    cs
+        pop     ds
+        call    umb_restore
+        mov     ax,4C01h
         int     21h
 
 ; ---------------------------------------------------------------------
@@ -566,7 +679,7 @@ sigtxt      db  "NOTE01"
 msg_ver     db  "Versi¢n incorrecta de DOS",13,10,0
 msg_parm    db  "Par†metro no v†lido",13,10,0
 msg_full    db  "La tabla de NOTE est† llena: libere residentes con FREENOTE.",13,10,0
-msg_inst1   db  "NOTE 0.2 instalado en ",0
+msg_inst1   db  "NOTE 0.3 instalado en ",0
 msg_low     db  " (memoria convencional), ",0
 msg_high    db  " (memoria superior), ",0
 msg_inst2   db  "",0
@@ -578,12 +691,25 @@ msg_help    db  "Marca el estado de la memoria para poder liberar despuÇs los",1
             db  "NOTE",13,10,13,10
             db  "La primera vez queda residente (unos 2,6 KB) y crea la marca 1;",13,10
             db  "cada vez que se ejecuta de nuevo crea otra marca sin ocupar m†s",13,10
-            db  "memoria. Use FREENOTE /L para ver las marcas y los residentes.",13,10,0
+            db  "memoria. Use FREENOTE /L para ver las marcas y los residentes.",13,10,13,10
+            db  "NOTE /D",13,10,13,10
+            db  "Quita NOTE de la memoria aunque haya marcas, sin preguntar. Las",13,10
+            db  "marcas se pierden; los residentes cargados se quedan en memoria.",13,10,0
+msg_nonote  db  "NOTE no est† instalado.",13,10,0
+msg_hooked  db  "NOTE no se puede quitar: la INT 21h o 27h ha sido enganchada por otro programa.",13,10,0
+msg_del1    db  "NOTE desinstalado (",0
+msg_del2    db  " bytes). Marcas descartadas: ",0
+msg_del3    db  "; residentes anotados: ",0
+msg_del4    db  " (siguen en memoria).",0
 dosmaj      db  0
 umbstate    db  0
 umbsaved    db  0
 ownpsp      dw  0
 nseg        dw  0
+optdel      db  0
+nmarks      db  0
+ntsrs       db  0
+delbytes    dw  0
 
         section .bss
 linebuf     resb 128
