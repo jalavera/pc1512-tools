@@ -1,4 +1,4 @@
-LOADHI per a MS-DOS 3.x                                     versi¢ 0.22
+LOADHI per a MS-DOS 3.x                                     versi¢ 0.24
 
 QuŠ ‚s
 ------
@@ -323,9 +323,23 @@ resident i s'hi posa al davant, el ganxo queda desactivat i ocupa 48
 bytes a dalt ("LOADHI", del sistema).
   LOADHI APPHI      APPHI a dalt; el GEM i les aplicacions que obre, a
                     baix
+Mentre el programa corre, LOADHI n'‚s el pare i espera que acabi. Des de
+la 0.24 nom‚s en queda un tros d'1,1 KB, a dalt de tot de la zona alta
+(al final, perquŠ no hi faci forats), i a la convencional el PSP i
+l'entorn (uns 400 bytes). Si a dalt no hi cap, el tros es queda a baix
+(1,3 KB). Fins a la 0.22 s'hi quedava sencer, uns 14 KB. Amb /R:n, com a
+SHELL= o si ha de tapar m‚s de 32 blocs, es queda sencer com abans.
 
 Historial
 ---------
+LOADHI 0.24 26-11-2026  El tros que espera que acabi el programa va a dalt
+                        de tot de la zona alta; a la convencional nom‚s hi
+                        queden el PSP i l'entorn de LOADHI (uns 400 bytes).
+LOADHI 0.23 26-11-2026  Mentre corre el programa que ha carregat (p. ex.
+                        GEMGO, i el GEM que obre), LOADHI ja no ocupa uns
+                        14 KB de la convencional: es redueix a un tros
+                        d'1,3 KB que espera que acabi, destapa la
+                        convencional i posa el nom als TSR.
 LOADHI 0.22 23-11-2026  Un programa carregat a dalt que n'executa d'altres
                         (APPHI amb Intro, un .BAT...) els deixava sense
                         mem•ria convencional: continuava tapada fins que

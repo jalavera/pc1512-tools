@@ -1,0 +1,26 @@
+CMDTR 0.1 - On t‚ la part transit•ria el COMMAND.COM (MS-DOS 3.20)
+====================================================================
+
+Eina de diagn•stic. Executa-la des del COMMAND.COM que vols mirar (p. ex.
+a la Shell de DOS del GEM, o a la sortida temporal al DOS de
+l'escriptori):
+
+   CMDTR
+
+Diu:
+  COMMAND PSP xxxx  PSP:2 xxxx   el COMMAND que l'ha engegat i on creu
+                                 que acaba la seva mem•ria
+  transitoria a xxxx  final xxxx on t‚ ara la part transit•ria (uns
+                                 19 KB) i el final del bloc on la va
+                                 posar
+  bloc lliure mes gran           en par…grafs (16 bytes)
+
+Si "transitoria a" ‚s m‚s gran que B800, la t‚ a la mem•ria alta; si ‚s
+m‚s petit, a la convencional.
+
+Nom‚s serveix per al COMMAND.COM de l'MS-DOS 3.20 (llegeix dues
+posicions internes seves).
+
+Historial
+---------
+0.1 26-11-2026  Primera versi¢.

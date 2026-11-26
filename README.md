@@ -6,13 +6,14 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 
 | Programa | Versió | Què fa |
 |---|---|---|
-| [LOADHI](LOADHI/) | 0.22 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM |
-| [MEM](MEM/) | 0.27 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos |
-| [GEMHI](GEMHI/) | 0.21 | Engega el GEM 2.0 triant amb /A: i /B: on va cada peça (GEMHI, GEMVDI, GEM.EXE, recursos, controladors i lletres), amb els accessoris a la memòria superior; dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
-| [GEMGO](GEMGO/) | 0.14 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; Intro les obre amb el GEM; F1, ajuda (abans APPHI) |
-| [CHARMAP](CHARMAP/) | 0.7 | Accessori del GEM 2.0: mapa de caràcters que escriu una cadena a l'aplicació del davant |
+| [LOADHI](LOADHI/) | 0.24 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM; mentre corre un programa carregat a dalt, a la convencional només hi queden el seu PSP i l'entorn (uns 400 bytes) |
+| [MEM](MEM/) | 0.30 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos; la part transitòria del COMMAND.COM, només on és de debò; cada sortida acaba amb la versió |
+| [GEMHI](GEMHI/) | 0.24 | Engega el GEM 2.0 triant amb /A: i /B: on va cada peça (GEMHI, GEMVDI, GEM.EXE, recursos, controladors i lletres, i el COMMAND.COM de la Shell de DOS), amb els accessoris a la memòria superior; dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
+| [GEMGO](GEMGO/) | 0.19 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; activa o desactiva accessoris; Intro les obre amb el GEM, i mentre el GEM corre només en queda un tros de 0,8 KB; F1, ajuda (abans APPHI) |
+| [CHARMAP](CHARMAP/) | 0.8 | Accessori del GEM 2.0: mapa de caràcters que escriu una cadena a l'aplicació del davant |
 | [DOSSHELL](DOSSHELL/) | 0.2 | Accessori del GEM 2.0: Shell de DOS des de qualsevol aplicació GEM; per tornar, EXIT |
-| [EINES](EINES/) | 0.3 | Accessori del GEM 2.0: CHARMAP i una Shell de DOS en un sol fitxer (el GEM 2.0 només carrega 3 accessoris) |
+| [EINES](EINES/) | 0.11 | Accessori del GEM 2.0: Caràcters (CHARMAP), Shell de DOS, Calculadora (amb jerarquia, parèntesis, x^n, n√x i pi) i Rellotge amb alarma en un sol fitxer (el GEM 2.0 només carrega 3 accessoris) |
+| [CMDTR](CMDTR/) | 0.1 | Diagnòstic: diu on té la part transitòria el COMMAND.COM del MS-DOS 3.20 que l'ha engegat |
 | [IOPATCH](IOPATCH/) | 5.0 | Pedaç de l'IO.SYS del MS-DOS 3.20: menú d'arrencada (MS-DOS / DOS Plus...) amb ratolí i compte enrere, i memòria convencional fins a 736 KB, sense FIXLDR; es desfà amb /U. Amb IOCONFIG per configurar el menú |
 | [IOPATCH6](IOPATCH6/) | 1.0 | Pedaç de l'IO.SYS del MS-DOS 6.22: memòria convencional fins a 736 KB; es desfà amb /U |
 | [HIDOS](HIDOS/) | 0.13 | Posa el nucli del MS-DOS 3.20 i les seves taules (FILES, BUFFERS, FCBS, unitats, DEVICEHIGH=) a la memòria superior; BUFFERSLOW=/FILESLOW=/FCBSLOW= i REM al CONFIG.SYS, intèrpret a baix amb /S-, només les ordres noves amb /N; es desfà amb /U |
@@ -196,7 +197,7 @@ l'escenari 3a o 3b (~726 KB amb 3b).
 | 5d | `/B- /S` | LOADHI | `/C` | 726 KB |
 
 Després de cada canvi amb HIDOS, reinicia. `HIDOS` sense res diu la
-configuració que hi ha, i `MEM /C` o `MEM /D` (0.27 o posterior) on és
+configuració que hi ha, i `MEM /C` o `MEM /D` (0.30 o posterior) on és
 cada cosa. Qualsevol combinació es desfà amb `HIDOS /U`.
 
 ## Descàrrega
@@ -213,6 +214,7 @@ nasm -f bin GEMGO/GEMGO.ASM -o GEMGO.COM
 nasm -f bin CHARMAP/CHARMAP.ASM -o CHARMAP.ACC   (accessori del GEM)
 nasm -f bin DOSSHELL/DOSSHELL.ASM -o DOSSHELL.ACC (accessori del GEM)
 nasm -f bin EINES/EINES.ASM -o EINES.ACC         (accessori del GEM)
+nasm -f bin CMDTR/CMDTR.ASM -o CMDTR.COM
 nasm -f bin IOPATCH6/IOPATCH6.ASM -o IOPATCH6.COM
 cd IOPATCH && sh BUILD.SH                (IOPATCH.COM i IOCONFIG.COM)
 cd HIDOS && sh BUILD.SH                  (HIDOS.COM)
@@ -250,6 +252,7 @@ català.
   al MS-DOS 3.20 de l'Amstrad.
 - Per a la memòria superior: RAM entre 640 KB i 1 MB (per exemple les
   targetes de memòria *Generic PC/XT* de 86Box).
+- CMDTR: el COMMAND.COM del MS-DOS 3.20 (llegeix dues posicions seves).
 - GEMHI, GEMGO, CHARMAP, DOSSHELL i EINES: el GEM 2.0 de l'Amstrad PC1512.
   GEMHI necessita la zona alta de LOADHI; GEMGO és per fer-lo servir amb
   GEMHI 0.14 o posterior (les mesures, amb la 0.9 o posterior).

@@ -1,6 +1,6 @@
 ; =====================================================================
 ;  CHARMAP.ASM - Accessori d'escriptori GEM: mapa de caracters
-;                (GEM 2.0, Amstrad PC1512).  Versio 0.7
+;                (GEM 2.0, Amstrad PC1512).  Versio 0.8
 ;
 ;  Muntatge:   nasm -f bin CHARMAP.ASM -o CHARMAP.ACC
 ;  Us:         copiar CHARMAP.ACC a \GEMBOOT i tornar a entrar al GEM.
@@ -398,9 +398,9 @@ dibuixa:
         VDI     32,0,1
         mov     word [intin], 1         ; vsf_interior(solid)
         VDI     23,0,1
-        mov     word [intin], 0         ; vsf_color(blanc)
+        mov     word [intin], 6         ; vsf_color (0.8: groc)
         VDI     25,0,1
-        mov     ax, [treb]              ; vr_recfl: fons blanc (retallat)
+        mov     ax, [treb]              ; vr_recfl: el fons (retallat)
         mov     [ptsin], ax
         add     ax, [treb+4]
         dec     ax
@@ -411,6 +411,8 @@ dibuixa:
         dec     ax
         mov     [ptsin+6], ax
         VDI     114,2,0
+        mov     word [intin], 2         ; (0.8) text transparent
+        VDI     32,0,1
 
         mov     byte [fila], 0
 .fila:  mov     al, [fila]
@@ -468,7 +470,7 @@ dibuixa:
         mov     word [intin], 1         ; vsf_color(negre)
         VDI     25,0,1
         VDI     114,2,0
-        mov     word [intin], 1
+        mov     word [intin], 2         ; (0.8) transparent
         VDI     32,0,1
         mov     word [intin], 0
         VDI     25,0,1
@@ -535,7 +537,25 @@ dibuixa:
         mov     [bx2], ax
         lodsw                           ; text
         push    si
-        mov     si, ax
+        push    ax
+        mov     ax, [ytop]              ; (0.8) boto blau: el fons
+        add     ax, [alt_fila]
+        add     ax, 2
+        mov     [by2], ax
+        mov     word [intin], 4         ; vsf_color(blau)
+        VDI     25,0,1
+        mov     ax, [bx1]
+        mov     [ptsin], ax
+        mov     ax, [ytop]
+        mov     [ptsin+2], ax
+        mov     ax, [bx2]
+        mov     [ptsin+4], ax
+        mov     ax, [by2]
+        mov     [ptsin+6], ax
+        VDI     114,2,0
+        mov     word [intin], 0         ; vst_color(blanc)
+        VDI     22,0,1
+        pop     si
         mov     di, intin
         mov     cl, [blen]
         xor     ch, ch
@@ -544,21 +564,20 @@ dibuixa:
         xor     ah, ah
         stosw
         loop    .bt
-        mov     ax, [bx1]
+        mov     ax, [bx1]               ; (0.8) un punt a l'esquerra i amunt
+        dec     ax                      ;   (centrat al boto)
         mov     [ptsin], ax
         mov     ax, [ytop]
         add     ax, [car_h]
-        inc     ax
         mov     [ptsin+2], ax
         mov     word [contrl+0], 8      ; v_gtext
         mov     word [contrl+2], 1
         mov     ax, [vhandle]
         mov     [contrl+12], ax
         call    crida_vdi
+        mov     word [intin], 1         ; vst_color(negre)
+        VDI     22,0,1
         mov     ax, [ytop]              ; marc: v_pline de 5 punts
-        add     ax, [alt_fila]
-        add     ax, 2
-        mov     [by2], ax
         mov     di, ptsin
         mov     ax, [bx1]
         stosw

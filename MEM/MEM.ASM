@@ -1,5 +1,5 @@
 ; =====================================================================
-;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.27
+;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.30
 ;
 ;  Substitut de MEM 6.22 que ent‚n les estructures de DOS 3.x:
 ;  - noms de programa tret de l'entorn (DOS 3 no els desa al MCB)
@@ -95,20 +95,24 @@ start:
         test    al,F_M
         jz      .n1
         call    do_module
-        jmp     exit_ok
+        jmp     short .ver
 .n1:    test    al,F_D
         jz      .n2
         call    do_debug
-        jmp     exit_ok
+        jmp     short .ver
 .n2:    test    al,F_C
         jz      .n3
         call    do_classify
-        jmp     exit_ok
+        jmp     short .ver
 .n3:    test    al,F_F
         jz      .n4
         call    do_free
-        jmp     exit_ok
+        jmp     short .ver
 .n4:    call    do_summary
+.ver:   mov     si,s_buit               ; (0.30) la versio, al final de tot
+        call    pline
+        mov     si,s_ver
+        call    pline
 exit_ok:
         mov     ax,4C00h
         int     21h
@@ -1564,6 +1568,18 @@ find_trans:
         call    strcmp
         pop     si
         jne     .n
+        mov     ax,[blk_own+si]         ; (0.29) la transitoria va a PSP:2
+        push    es                      ;   menys la seva mida: nomes es
+        mov     es,ax                   ;   aqui si PSP:2 cau dins el bloc
+        mov     dx,[es:2]               ;   lliure (un COMMAND engegat a
+        pop     es                      ;   dalt pel GEMHI 0.24 la te a la
+        mov     cx,[blk_seg+si+2]       ;   convencional)
+        inc     cx
+        cmp     dx,cx
+        jbe     .n
+        add     cx,[blk_size+si+2]
+        cmp     dx,cx
+        ja      .n
         mov     cx,bx                   ; el lliure ha de ser l'£ltim bloc
         add     cx,2                    ; de la regi¢
         cmp     cx,[nblk]
@@ -4926,8 +4942,9 @@ help_txt:
         db      '  /G              Dentro del GEM: muestra qu‚ archivos del GEM busca',0
         db      '                  en la memoria y d¢nde los encuentra.',0
         db      0
-        db      'MEM 0.27 para MS-DOS 3.x (PC1512).',0
+s_ver   db      'MEM 0.30 para MS-DOS 3.x (PC1512).',0
         db      0FFh
+s_buit  db      0
 
 ; ---------------------------------------------------------------------
         align   2

@@ -1,4 +1,4 @@
-CHARMAP 0.7 - Mapa de car…cters per al GEM 2.0 (Amstrad PC1512)
+CHARMAP 0.8 - Mapa de car…cters per al GEM 2.0 (Amstrad PC1512)
 ================================================================
 
 QuŠ ‚s
@@ -69,10 +69,12 @@ Historial
      no recollia.
 0.5  Corregit: despr‚s d'Envia l'accessori es quedava bloquejat i no
      es podia tornar a obrir.
+0.8  26-11-2026: colors com la resta d'EINES: fons groc i botons blaus
+     amb el text en blanc, un punt m‚s amunt i a l'esquerra (centrat).
 0.7  20-11-2026: el doble clic no afegia res. Ara, un clic sobre el
      car…cter ja triat l'afegeix a la cadena (el GEM ja no espera el
      temps del doble clic: cada clic respon de seguida).
 0.6  20-11-2026: amb la finestra al davant, les tecles s'afegeixen a
      la cadena (Retroc‚s esborra, Retorn envia, Esc tanca). La
      cap‡alera ja no demana tota la mem•ria al GEM.
-
+

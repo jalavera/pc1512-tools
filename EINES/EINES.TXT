@@ -1,28 +1,35 @@
-EINES 0.3 - Car…cters i Shell de DOS per al GEM 2.0 (Amstrad PC1512)
+EINES 0.11 - Car…cters, Shell de DOS, Calculadora i Rellotge per al GEM 2.0
+(Amstrad PC1512)
 =====================================================================
 
 QuŠ ‚s
 ------
-Un sol accessori d'escriptori del GEM amb dues entrades al men£ dels
+Un sol accessori d'escriptori del GEM amb quatre entrades al men£ dels
 accessoris (el de la dreta de la barra de men£s):
    Car…cters      el mapa de car…cters (CHARMAP 0.7)
    Shell de DOS   obre el DOS en mode text; amb EXIT es torna al GEM
                   (abans DOSSHELL 0.2)
+   Calculadora    calculadora amb 6 decimals, jerarquia i parŠntesis
+   Rellotge       l'hora, la data i una alarma
+La Calculadora i el Rellotge s¢n nous (fets per a EINES), no els de
+CALCLOCK.
 Surten a totes les aplicacions GEM, no nom‚s a l'escriptori.
 
-Per quŠ un sol fitxer: el GEM 2.0 nom‚s carrega 3 fitxers d'accessori
-de \GEMBOOT (CALCLOCK.ACC, que porta Calculadora, Reloj i Spooler
-impresora, en compta un). Amb EINES.ACC, Car…cters i Shell de DOS
-n'ocupen un, i en queda un altre per a SNAPSHOT.
+Per quŠ: el GEM 2.0 nom‚s carrega 3 fitxers d'accessori de \GEMBOOT.
+Amb la Calculadora i el Rellotge dins d'EINES, ja no cal CALCLOCK.ACC
+(Calculadora, Reloj i Spooler impresora, 28 KB a la mem•ria): EINES
+fa menys de 10 KB amb tot.
 
 Instalúlaci¢
 ------------
    DEL C:\GEMBOOT\CHARMAP.ACC
    DEL C:\GEMBOOT\DOSSHELL.ACC
+   REN C:\GEMBOOT\CALCLOCK.ACC CALCLOCK.ACX
    COPY A:EINES.ACC C:\GEMBOOT
-i, si vols, torna a posar SNAPSHOT a \GEMBOOT. Torna a entrar al GEM.
-Al GEMBOOT hi ha d'haver nom‚s 3 fitxers .ACC (o SNAPSHOT): CALCLOCK,
-EINES i SNAPSHOT.
+Torna a entrar al GEM. CALCLOCK.ACX es pot tornar a dir CALCLOCK.ACC si
+el vols recuperar (per l'spooler, per exemple). Si deixes CALCLOCK, ‚s
+possible que el GEM no hi posi totes les entrades al men£: en t‚ un
+nombre limitat.
 
 Car…cters
 ---------
@@ -55,6 +62,74 @@ la barra de men£s, l'escriptori i les finestres.
 - No executis el GEM, ni programes residents (TSR), des d'aqu¡: el
   GEM continua a la mem•ria.
 
+Calculadora
+-----------
+Botons (clic) o teclat, amb la finestra al davant:
+   0-9 .         el n£mero (tamb‚ la coma)
+   + - * /       l'operaci¢
+   ( )           parŠntesis
+   x^n           potŠncia: a x^n n (tamb‚ ^). n enter, tamb‚
+                 negatiu: 2 x^n 10 = 1024, 2 x^n -2 = 0,25
+   nûx           arrel n-Šsima: x nûx n (tamb‚ R): 27 nûx 3 = 3,
+                 2 nûx 2 = 1,414213.
+                 n enter (1, 2, 3...); d'un negatiu, nom‚s amb n senar
+   pi            3,141593 (tamb‚ P)
+   =             el resultat (tamb‚ Retorn)
+   C             ho esborra tot (tamb‚ Supr)
+   CE            esborra el n£mero que escrius
+   <-            esborra l'£ltima xifra (tamb‚ Retroc‚s)
+   +/-           canvia el signe (tamb‚ N)
+   Esc           tanca la finestra
+Amb jerarquia: primer x^n i nûx (de dreta a esquerra: 2^3^2 = 512),
+despr‚s * i /, i despr‚s + i -, d'esquerra a dreta:
+1 + 2 * 3 = 7,  10 - 2 - 3 = 5,  (1 + 2) * 3 = 9. Es poden posar fins a
+16 parŠntesis i operacions pendents un dins l'altre. A l'esquerra del
+visor, "(2" vol dir que hi ha 2 parŠntesis oberts; amb = es tanquen
+tots. En pr‚mer una operaci¢, el visor mostra el que ja es pot
+calcular (1 + 2 * 3 + mostra 7).
+Dues operacions seguides: compta la darrera (5 + * 2 = 10). Despr‚s
+d'una operaci¢, +/- comen‡a un n£mero negatiu (5 * +/- 3 = -15). Un
+resultat (despr‚s de = o de ")") es pot fer servir per continuar.
+Fins a 12 xifres enteres i 6 decimals en escriure; els resultats, fins
+a uns 9 bilions (9.223.372.036.854) amb 6 decimals (tallats, sense
+arrodonir). Si no hi cap o divideixes per 0: Error (qualsevol tecla
+torna a comen‡ar).
+
+Rellotge
+--------
+Com el de l'Amstrad: una finestra petita amb dues files.
+   [rellotge]  hh : mm  [nota]     (verd)
+   dd / mm / aa                    (cian)
+Es torna a escriure cada minut (sense segons), i nom‚s la fila que
+canvia.
+   Bot¢ de l'esquerra (rellotge): hi posa l'hora de l'alarma (el bot¢
+       passa a ser una campaneta vermella i la fila, groga). Llavors un
+       clic a les hores o als minuts els avan‡a d'un en un, o les
+       xifres del teclat l'escriuen (0 7 3 0 = 07:30). Un altre clic al
+       bot¢ torna a l'hora.
+   Bot¢ de la dreta (nota): engega o apaga l'alarma. Vermella:
+       engegada. Tamb‚ amb A o espai.
+   Esc  tanca la finestra.
+Quan arriba l'hora, xiula tres vegades i surt una alerta, encara que la
+finestra sigui tancada; despr‚s queda apagada.
+
+EINES.CFG
+---------
+A \GEMBOOT\EINES.CFG de la unitat des d'on s'engega el GEM (15 bytes)
+es desen l'alarma (hora i si ‚s engegada) i on ‚s cada finestra
+(Car…cters, Calculadora, Rellotge) quan la mous. En tornar a entrar al
+GEM, o despr‚s de reiniciar, tot hi ‚s tal com ho vas deixar. Si el
+fitxer no hi ‚s: alarma a les 07:00 apagada, la Calculadora i el
+Rellotge al mig de la pantalla i els Car…cters a dalt a l'esquerra.
+
+Colors
+------
+Com els de l'Amstrad: la Calculadora en blau, amb el visor groc, les
+xifres en blanc i la resta de botons en cian; el Rellotge, l'hora en
+verd (groc amb l'alarma) i la data en cian, amb una l¡nia negra entre
+les dues files; els Car…cters (0.8), fons groc i botons blaus amb el
+text en blanc.
+
 Trucs
 -----
 * Els codis de Car…cters s¢n els del joc del GEM, no els del DOS. Els
@@ -66,7 +141,8 @@ Trucs
   ha buits. A C2-C6, D3, D4, D8-DF i FF la font no t‚ cap dibuix.
 * Amb KEYBX /GEM, les tecles mortes fan les maj£scules accentuades del
   GEM sense haver d'obrir el mapa.
-* L'accessori fa 8 KB. La barra de men£s es guarda, mentre dura la
+* L'accessori fa uns 12,5 KB (a la 0.3, 8 KB): s'han retallat els
+  blocs de par…metres del VDI al que cal. La barra de men£s es guarda, mentre dura la
   shell, en un bloc de mem•ria de DOS que s'allibera en tornar.
 * Muntatge: nasm -f bin EINES.ASM -o EINES.ACC
 
@@ -75,9 +151,45 @@ Fitxers
 EINES.ACC   l'accessori
 EINES.ASM   el codi font
 EINES.TXT   aquest fitxer
+EINES.CFG   (el crea l'accessori a \GEMBOOT) l'alarma desada
 
 Historial
 ---------
+0.11 26-11-2026  Calculadora: el bot¢ que prems (amb el ratol¡ o amb el
+                 teclat) es veu en negatiu un moment (uns 90 ms), com a
+                 l'original.
+0.10 26-11-2026  Calculadora: el bot¢ de l'arrel diu nûx, com x^n.
+0.9  26-11-2026  Rellotge: la campaneta de l'alarma, dibuixada (abans,
+                 la lletra FBh, que ‚s l'arrel); els botons, sense marc,
+                 nom‚s una franja blanca; un clic a la nota (o A, o
+                 espai) nom‚s en canvia el color, sense tornar a
+                 escriure l'hora; la data, un punt m‚s avall (centrada).
+                 NO provat en un PC1512.
+0.8  26-11-2026  Calculadora: sense les ombres grogues als costats del
+                 visor en escriure; etiquetes centrades als botons (un
+                 punt m‚s amunt i a l'esquerra); l'arrel, amb el
+                 car…cter û (FBh). Rellotge: l¡nia negra entre les dues
+                 files; els botons, amb el dibuix centrat i dins el
+                 marc. Car…cters: fons groc, botons blaus amb el text
+                 blanc i centrat. NO provat en un PC1512.
+0.7  26-11-2026  Colors com els de l'Amstrad. Rellotge com l'original:
+                 sense segons, bot¢ de l'alarma (campaneta) i bot¢ per
+                 engegar-la (nota). La Calculadora i el Rellotge surten
+                 al mig; totes les finestres recorden on eren
+                 (EINES.CFG). El bot¢ de l'arrel diu "Arr" (el car…cter
+                 FBh de la lletra del GEM ‚s una campaneta). NO provat
+                 encara dins el GEM real.
+0.6  25-11-2026  Calculadora: potŠncia (x^n), arrel n-Šsima (Arr) i pi,
+                 als tres botons que eren buits. L'alarma es desa a
+                 \GEMBOOT\EINES.CFG i es recupera en engegar. NO
+                 provat encara dins el GEM real.
+0.5  25-11-2026  Calculadora amb jerarquia (1+2*3 = 7) i parŠntesis;
+                 5 columnes de botons. Rellotge amb alarma. NO provat
+                 encara dins el GEM real.
+0.4  25-11-2026  Calculadora i Rellotge, per no haver de carregar
+                 CALCLOCK.ACC (28 KB). Les quatre finestres es poden
+                 tenir obertes alhora. NO provat encara dins el GEM
+                 real.
 0.1  20-11-2026  CHARMAP 0.5 i DOSSHELL 0.2 en un sol accessori, amb
                  dues entrades al men£. La cap‡alera ja no demana tota
                  la mem•ria.

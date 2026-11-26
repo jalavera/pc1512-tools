@@ -1,11 +1,11 @@
 ; =====================================================================
 ;  GEMHI.ASM - Engega el GEM i li posa a la memoria alta el que carrega
 ;              en arrencar (AMSTRAD.SYS, accessoris, GEM.RSC...)
-;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.21
+;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.24
 ;
 ;  Muntatge:   nasm -f bin GEMHI.ASM -o GEMHI.COM
 ;  Us:         GEMHI [/D] /A:lletres /B:lletres programa [parametres]
-;              lletres de HVGRS, cadascuna a /A: (alta) o a /B: (baixa)
+;              lletres de HVGRSC, cadascuna a /A: (alta) o a /B: (baixa)
 ;              p. ex. GEMHI /A:HVG /B:RS GEMVDI
 ;
 ;  GEMHI executa el programa (GEMVDI, que engega GEM.EXE) i, mentre el
@@ -72,6 +72,12 @@
 ;  0.21: les lletres agrupades per lloc: /A:HVGRS, /B:..., o barrejat
 ;  (/A:HVG /B:RS). Totes cinc, una sola vegada; si en falta alguna, ho
 ;  diu.
+;  0.22: C, el COMMAND.COM que s'engega des del GEM (la Shell de DOS
+;  d'un accessori o un .BAT de l'escriptori): amb /A:...C, a dalt com
+;  una aplicacio (app_exec). Ara son sis lletres.
+;  0.23: l'alerta de /D, amb dues peces per linia, tambe diu la C.
+;  0.24: COMMAND.COM a dalt deixa la part transitoria a la
+;  convencional (cmdtop), no al tros lliure de dalt.
 ; =====================================================================
 
         cpu     8086
@@ -110,7 +116,7 @@ apb     times 22 db 0           ; copia del bloc de parametres de l'EXEC
 gem_ret dw      0, 0, 0         ; IP CS FLAGS del GEM a l'EXEC de l'aplicacio
 gem_sp  dw      0               ; la pila del GEM a l'EXEC de l'aplicacio
 gem_ss  dw      0
-APPSTK  equ     160
+APPSTK  equ     208             ; (0.22) fins a tres, un sota l'altre
 DOSFRM  equ     48
 dosfrm  times DOSFRM db 0       ; marc de retorn per al DOS (PSP:2Eh del GEM)
 app_stk times APPSTK db 0       ; pila propia per carregar i tornar
@@ -175,7 +181,15 @@ int21:  cmp     ah, 48h
         call    dbg_on                  ; (0.16) /D
 .app:   cmp     al, 0                   ; 4B00h d'un .APP, des del GEM
         jne     .chain
-        cmp     byte [cs:apps], 1
+        call    escom                   ; (0.22) COMMAND.COM (Shell de DOS
+        jne     .ap0                    ;   d'un accessori, o l'escriptori):
+        cmp     byte [cs:opt_c], 'A'    ;   on diu la lletra C
+        jne     .chain
+        cmp     byte [cs:nivell], 3
+        jae     .chain
+        mov     byte [cs:ecmd], 1       ;   (trk i app_dh, els de l'aplicacio)
+        jmp     app_exec
+.ap0:   cmp     byte [cs:apps], 1
         jne     .chain
         push    ax
         push    bx
@@ -482,7 +496,10 @@ int21:  cmp     ah, 48h
 ;  Si no hi cap, l'EXEC normal (a baix).
 ; ---------------------------------------------------------------------
 app_exec:
-        push    bp                      ; (0.15) el retorn del GEM (IP CS FLAGS
+        cmp     byte [cs:nivell], 0     ; (0.22) ja n'hi ha un en marxa (GEM.EXE
+        je      .n0                     ;   a dalt, o l'aplicacio de la que
+        call    desa_ctx                ;   surt COMMAND.COM): el seu estat, a part
+.n0:    push    bp                      ; (0.15) el retorn del GEM (IP CS FLAGS
         mov     bp, sp                  ;   del seu INT 21h), a part: mentre
         push    ax                      ;   corre l'aplicacio, l'AES fa servir
         mov     ax, [bp+2]              ;   aquesta pila i ho esborra (traca:
@@ -499,7 +516,10 @@ app_exec:
         push    cs                      ;   mentre corre l'aplicacio
         pop     ss
         mov     sp, app_stk + APPSTK
-        sti
+        cmp     byte [cs:nivell], 0     ; (0.22) si n'hi ha un altre, sota
+        je      .t                      ;   els registres que ell hi ha desat
+        mov     sp, [cs:app_sp]
+.t:     sti
         push    ax
         push    bx
         push    cx
@@ -546,13 +566,25 @@ app_exec:
         call    fillg
         or      bx, bx
         jz      .baix
-.psp:   cmp     byte [cs:exg], 0
-        jne     .pg
-        mov     byte [cs:apps], 2
+.psp:   mov     al, 0                   ; (0.22) quin: 0 GEM.EXE, 1 aplicacio,
+        cmp     byte [cs:exg], 0        ;   2 COMMAND.COM
+        je      .p1
+        mov     byte [cs:g_alt], 1
         jmp     short .pp
-.pg:    mov     byte [cs:g_alt], 1
-.pp:
+.p1:    mov     al, 2
+        cmp     byte [cs:ecmd], 0
+        jne     .pp
+        mov     al, 1
+        mov     byte [cs:apps], 2
+.pp:    mov     [cs:kind], al
+        mov     byte [cs:exg], 0
+        mov     byte [cs:ecmd], 0
+        inc     byte [cs:nivell]
         mov     es, bx                  ; quan acabi, torna a app_end
+        cmp     byte [cs:kind], 2       ; (0.24) COMMAND.COM: la part
+        jne     .pk                     ;   transitoria, a la convencional
+        call    cmdtop
+.pk:
         mov     word [es:0Ah], app_end
         mov     [es:0Ch], cs
         mov     ax, [cs:apb+14h]        ; .COM: CS:IP i SS:SP com fa EXEC
@@ -592,24 +624,7 @@ app_exec:
         mov     ah, 1Ah
         pushf
         call    far [cs:old21]
-        cmp     byte [cs:exg], 0        ; (0.20) GEM.EXE: el seu estat, a part
-        je      .go
-        mov     byte [cs:exg], 0
-        push    cs
-        pop     es
-        push    cs
-        pop     ds
-        cld
-        mov     si, gem_ret             ; gem_ret gem_sp gem_ss
-        mov     di, gv_ctx
-        mov     cx, 5
-        rep     movsw
-        mov     si, [app_sp]            ; els registres desats (9 paraules)
-        mov     cx, 9
-        rep     movsw
-        mov     ax, [app_sp]
-        stosw
-.go:    cli
+        cli
         mov     ss, [cs:apb+10h]
         mov     sp, [cs:apb+0Eh]
         sti
@@ -619,6 +634,7 @@ app_exec:
         jmp     far [cs:apb+12h]
 .baix:  mov     byte [cs:dbg_why], 4    ; (0.16) /D: no hi cabia
         mov     byte [cs:exg], 0
+        mov     byte [cs:ecmd], 0
         pop     es                      ; no hi cap a dalt: EXEC normal
         pop     ds
         pop     bp
@@ -632,29 +648,72 @@ app_exec:
         mov     ss, [cs:gem_ss]
         mov     sp, [cs:gem_sp]
         sti
-        jmp     far [cs:old21]
+        cmp     byte [cs:nivell], 0     ; (0.22) el del que n'ha sortit, de nou
+        je      .bx
+        call    torna_ctx
+.bx:    jmp     far [cs:old21]
+
+; (0.22) estat d'app_exec (gem_ret gem_sp gem_ss, app_sp, kind) <->
+; ctxs[nivell-1]: un per cada programa carregat a dalt que en carrega un
+; altre. Els registres de cadascun queden a app_stk, un sota l'altre.
+desa_ctx:
+        push    si
+        push    di
+        push    ax
+        call    ctx_lloc
+        mov     si, gem_ret
+        mov     di, ax
+        jmp     short ctx_cp
+torna_ctx:
+        push    si
+        push    di
+        push    ax
+        call    ctx_lloc
+        mov     si, ax
+        mov     di, gem_ret
+ctx_cp: push    cx
+        push    ds
+        push    es
+        push    cs
+        pop     ds
+        push    cs
+        pop     es
+        cld
+        mov     cx, 5
+        rep     movsw
+        cmp     di, gem_ret+10          ; cap a ctxs: app_sp i kind
+        je      .a
+        mov     si, app_sp
+        movsw
+        mov     si, kind
+        movsb
+        jmp     short .x
+.a:     mov     di, app_sp              ; cap a les variables
+        movsw
+        mov     di, kind
+        movsb
+        mov     [app_ss], cs
+.x:     pop     es
+        pop     ds
+        pop     cx
+        pop     ax
+        pop     di
+        pop     si
+        ret
+ctx_lloc:                               ; AX = ctxs + (nivell-1)*14
+        mov     al, [cs:nivell]
+        dec     al
+        mov     ah, 14
+        mul     ah
+        add     ax, ctxs
+        ret
 
 ; l'aplicacio ha acabat (el DOS ja ha tornat el PSP actual al GEM)
 app_end:
-        cmp     byte [cs:apps], 2       ; (0.20) no hi ha cap aplicacio en
-        je      .ap                     ;   marxa: acaba GEM.EXE (/G:A).
-        push    cs                      ;   Es torna a posar el seu estat
-        pop     es                      ;   (els registres no compten: el
-        push    cs                      ;   DOS torna amb un marc nostre)
-        pop     ds
-        cld
-        mov     si, gv_ctx
-        mov     di, gem_ret
-        mov     cx, 5
-        rep     movsw
-        mov     ax, [gv_ctx+28]         ; app_sp de GEM.EXE
-        mov     [app_sp], ax
-        mov     [app_ss], cs
-        mov     di, ax
-        mov     cx, 9
-        rep     movsw
-        jmp     short .g
-.ap:    mov     byte [cs:apps], 1
+        cmp     byte [cs:kind], 1       ; (0.22) una aplicacio: ja no n'hi ha
+        jne     .k                      ;   cap en marxa
+        mov     byte [cs:apps], 1
+.k:     dec     byte [cs:nivell]
 .g:     cli
         mov     ss, [cs:app_ss]
         mov     sp, [cs:app_sp]
@@ -682,7 +741,10 @@ app_end:
         mov     [bp+6], ax
         pop     ax
         pop     bp
-        sti
+        cmp     byte [cs:nivell], 0     ; (0.22) en surt un que en tenia un
+        je      .r                      ;   altre a sota: el seu estat, de nou
+        call    torna_ctx
+.r:     sti
         clc
         retf    2
 
@@ -721,6 +783,89 @@ esapp:  push    si
 .x:     pop     ax
         pop     si
         ret
+
+; (0.22) ZF=1 si DS:DX es ...COMMAND.COM (sense carpeta, o darrere \ / :)
+;  (0.24) COMMAND.COM posa la part transitoria (uns 19 KB) a PSP:2
+;  menys la seva mida, sense demanar-la al DOS. A dalt, PSP:2 seria el
+;  final de la memoria alta: la transitoria quedaria en un tros que el
+;  DOS te per lliure, i el que s'hi carregues la trepitjaria. Li diem
+;  que la memoria acaba al final del bloc lliure mes gran de la
+;  convencional: hi va com si COMMAND fos a baix, i a dalt nomes
+;  queden els 3,4 KB del resident. ES = PSP de COMMAND.
+cmdtop: push    ax
+        push    bx
+        push    cx
+        push    dx
+        push    ds
+        mov     ax, [cs:firstmcb]
+        xor     dx, dx                  ; mida del mes gran
+        xor     cx, cx                  ; i on acaba
+.l:     cmp     ax, [cs:convtop]
+        jae     .e
+        mov     ds, ax
+        mov     bx, [3]
+        cmp     word [1], 0
+        jne     .n
+        cmp     bx, dx
+        jbe     .n
+        mov     dx, bx
+        mov     cx, ax
+        add     cx, bx
+        inc     cx
+.n:     cmp     byte [0], 'Z'
+        je      .e
+        add     ax, bx
+        inc     ax
+        jmp     .l
+.e:     cmp     dx, 500h                ; hi ha de cabre (4ACh paragrafs)
+        jb      .x
+        cmp     cx, [cs:convtop]
+        jbe     .c
+        mov     cx, [cs:convtop]
+.c:     mov     [es:2], cx
+.x:     pop     ds
+        pop     dx
+        pop     cx
+        pop     bx
+        pop     ax
+        ret
+
+escom:  push    si
+        push    di
+        push    ax
+        mov     si, dx
+.l:     lodsb
+        or      al, al
+        jnz     .l
+        sub     si, 12                  ; "COMMAND.COM",0
+        jb      .no
+        cmp     si, dx
+        jb      .no
+        je      .n
+        mov     al, [si-1]
+        cmp     al, '\'
+        je      .n
+        cmp     al, '/'
+        je      .n
+        cmp     al, ':'
+        jne     .x
+.n:     mov     di, t_cmd
+.c:     mov     al, [si]
+        mov     ah, [cs:di]
+        or      ah, ah
+        jz      .x                      ; ZF=1: igual
+        inc     si
+        inc     di
+        and     ax, 0DFDFh
+        cmp     al, ah
+        je      .c
+        jmp     short .x
+.no:    or      al, 1                   ; ZF=0
+.x:     pop     ax
+        pop     di
+        pop     si
+        ret
+t_cmd   db      'COMMAND.COM', 0
 
 ; ZF=1 si el PSP actual (-> cpsp) es fill directe del GEM
 esfill: push    ax
@@ -1595,6 +1740,12 @@ alt_gem:
         mov     ax, [gempsp]
         mov     bl, [opt_g]
         call    gpeca
+        mov     si, d_gc                ; (0.23) C: nomes la lletra (el
+        call    dcpy                    ;   COMMAND.COM encara no hi es)
+        mov     al, [opt_c]
+        stosb
+        mov     si, d_gcs
+        call    dcpy
         mov     si, d_gr
         mov     bl, [opt_r]
         mov     bp, 0
@@ -1723,6 +1874,7 @@ opt_v   db      0               ; GEMVDI
 opt_g   db      0               ; GEM.EXE
 opt_r   db      0               ; el que el GEM demana mentre arrenca
 opt_s   db      0               ; controladors i lletres (.SYS, .FNT)
+opt_c   db      0               ; (0.22) COMMAND.COM engegat des del GEM
 vpsp    dw      0               ; PSP de GEMVDI (qui fa el 1r EXEC)
 fpar    dw      0               ; fillg: el pare que es busca
 cls     db      0               ; peticio en curs: 0 R, 1 S, 2 accessori
@@ -1732,7 +1884,10 @@ g_alt   db      0               ; 1: GEM.EXE carregat a dalt
 dgem    db      0               ; /D: falta l'alerta del GEM
 c_par   dw      0, 0, 0, 0, 0, 0 ; paragrafs: R dalt, R baix, S dalt, S baix, acc
 exg     db      0               ; (0.20) 1: app_exec carrega GEM.EXE
-gv_ctx  times 30 db 0           ; GEM.EXE: gem_ret gem_sp gem_ss, regs, app_sp
+nivell  db      0               ; (0.22) programes carregats per app_exec en marxa
+kind    db      0               ; el darrer: 0 GEM.EXE, 1 aplicacio, 2 COMMAND.COM
+ecmd    db      0               ; 1: app_exec carrega COMMAND.COM
+ctxs    times 3*14 db 0         ; estats desats (desa_ctx)
 
 ; (0.19) AX = bloc que s'acaba de donar (sv_bx paragrafs): el compta
 ; per a /D segons la peca (cls) i on ha anat
@@ -1773,12 +1928,14 @@ dio     times 4 dw 0
 dai     times 2 dw 0
 dao     times 2 dw 0
 d_t0    db      '[1][GEMHI: ', 0
-d_g0    db      '[1]', 0
-d_gh    db      '[H GEMHI   ', 0
-d_gv    db      '|V GEMVDI  ', 0
-d_gg    db      '|G GEM.EXE ', 0
-d_gr    db      '|R RSC/mem ', 0
-d_gs    db      '|S SYS/FNT ', 0
+d_g0    db      '[1][GEMHI: on va cada pe', 87h, 'a', 0   ; (0.23) dues per linia
+d_gh    db      '|H ', 0
+d_gv    db      '   V ', 0
+d_gg    db      '|G ', 0
+d_gc    db      '  C ', 0
+d_gcs   db      ': COMMAND', 0
+d_gr    db      '|R ', 0
+d_gs    db      '|S ', 0
 d_dp    db      ': ', 0
 d_gd    db      'dalt ', 0
 d_gb    db      'baix ', 0
@@ -1809,7 +1966,8 @@ d_w1    db      'marca Alta', 0
 d_w2    db      'escriptori', 0
 d_w3    db      'marca Conv', 0
 d_w4    db      'no hi cabia a dalt', 0
-d_why   dw      d_w0, d_w1, d_w2, d_w3, d_w4
+d_w5    db      'COMMAND.COM: /A:...C', 0
+d_why   dw      d_w0, d_w1, d_w2, d_w3, d_w4, d_w5
 d_c0    db      'no', 0
 d_c1    db      'el programa', 0
 d_c2    db      'dades', 0
@@ -1967,8 +2125,8 @@ inici:  cld
         cmp     al, '/'
         je      .op
         and     al, 0DFh
-        mov     di, t_pec               ; "HVGRS"
-        mov     cx, 5
+        mov     di, t_pec               ; "HVGRSC"
+        mov     cx, 6
         push    es
         push    ds
         pop     es
@@ -2008,7 +2166,7 @@ inici:  cld
         int     21h
         inc     cx
 .f2:    inc     bx
-        cmp     bx, 5
+        cmp     bx, 6
         jb      .f1
         jcxz    .f4
         mov     dx, t_fal2
@@ -2311,25 +2469,26 @@ existeix:
 
 e_exe   db      '.EXE', 0
 e_com   db      '.COM', 0
-t_us    db      'GEMHI 0.21 - Engega el GEM amb les seves peces a la mem', 95h, 'ria alta o', 13, 10
+t_us    db      'GEMHI 0.24 - Engega el GEM amb les seves peces a la mem', 95h, 'ria alta o', 13, 10
         db      'a la convencional (zona alta enlla', 87h, 'ada: LOADHI /H).', 13, 10, 13, 10
         db      0E9h, 's:  GEMHI [/D] /A:lletres /B:lletres programa [par', 85h, 'metres]', 13, 10
         db      '     /A: a la mem', 95h, 'ria alta      /B: a la baixa (convencional)', 13, 10
-        db      '     H  GEMHI mateix (el que queda a la mem', 95h, 'ria, uns 6,5 KB)', 13, 10
+        db      '     H  GEMHI mateix (el que queda a la mem', 95h, 'ria, uns 6,7 KB)', 13, 10
         db      '     V  GEMVDI', 13, 10
         db      '     G  GEM.EXE', 13, 10
         db      '     R  GEM.RSC i mem', 95h, 'ria interna del GEM', 13, 10
         db      '     S  controladors (AMSTRAD.SYS...) i lletres (.FNT)', 13, 10
+        db      '     C  COMMAND.COM engegat des del GEM (Shell de DOS, .BAT)', 13, 10
         db      '     /D alertes del GEM amb on va cada pe', 87h, 'a i cada aplicaci', 0A2h, 13, 10
-        db      '     Les cinc lletres, cadascuna a /A: o a /B:. Si una de /A: no', 13, 10
+        db      '     Les sis lletres, cadascuna a /A: o a /B:. Si una de /A: no', 13, 10
         db      '     hi cap a dalt, va a baix.', 13, 10
-        db      '     p. ex.  GEMHI /A:HVGRS GEMVDI      GEMHI /A:HVG /B:RS GEMVDI', 13, 10, '$'
-t_pec   db      'HVGRS'
+        db      '     p. ex.  GEMHI /A:HVGRSC GEMVDI     GEMHI /A:HVG /B:RSC GEMVDI', 13, 10, '$'
+t_pec   db      'HVGRSC'
 t_fal   db      'GEMHI: falta on va:$'
 t_fal2  db      '  (cada lletra, a /A: o a /B:)', 13, 10, 13, 10, '$'
 t_nop   db      'GEMHI: '
 t_np1   db      '?'
-        db      ' no ', 82h, 's cap de les peces HVGRS', 13, 10, 13, 10, '$'
+        db      ' no ', 82h, 's cap de les peces HVGRSC', 13, 10, 13, 10, '$'
 t_rep   db      'GEMHI: la lletra '
 t_rp1   db      '?'
         db      " hi surt dues vegades", 13, 10, 13, 10, '$'
