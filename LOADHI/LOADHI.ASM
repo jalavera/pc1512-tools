@@ -1,5 +1,5 @@
 ;  LOADHI.ASM  -  carrega programes a la mem•ria superior amb MS-DOS 3.x
-;                                                               versi¢ 0.22
+;                                                               versi¢ 0.24
 ;  és:  LOADHI [@fitxer] [/H:inici[-final]] [/F] [/B:n] [/FILES:n] [/C]
 ;              [/R:n] [/RB:n] [/RC:n] [programa [par…metres]]
 ;
@@ -221,6 +221,7 @@ start:  cld
         call    kids_snap               ; fills d'altres LOADHI d'abans
         call    block_low
         call    xhook                   ; si el programa n'executa un altre,
+        call    run_go                  ; (0.23) a baix, nom‚s un tros petit
         call    do_exec                 ;   la convencional torna a ser lliure
         pushf
         push    ax
@@ -1879,7 +1880,7 @@ m_tros2 db      ': lliure $'
 m_low   db      'No hi cap a la zona alta: es carrega a la mem•ria convencional.',CR,LF,'$'
 m_xerr  db      'No s',27h,'ha pogut executar el programa.',CR,LF,'$'
 m_badfmt db     'El programa no t‚ un format v…lid (els .BAT no es poden carregar).',CR,LF,'$'
-m_help  db      'LOADHI 0.22 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
+m_help  db      'LOADHI 0.24 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
         db      CR,LF
         db      'LOADHI [@fitxer] [/H:ini[-fi]] [/F] [/B:n] [/FILES:n] [/C] [/R:n]',CR,LF
         db      '       [/RB:n] [/RC:n]',CR,LF
@@ -2877,6 +2878,324 @@ st_tail times 130 db 0
 stub_end:
 STUBTOP equ     (stub_end-stub+100h+256) & 0FFFEh
 STUBPARAS equ   (stub_end-stub+100h+256+15) >> 4
+
+; =====================================================================
+;  (0.23) Mentre corre el programa, LOADHI ‚s el seu pare i espera que
+;  acabi: abans s'hi quedava sencer (uns 14 KB de la convencional). Ara
+;  copia a PSP:0100h un tros petit (rstub) que fa l'EXEC, destapa,
+;  posa el nom als blocs dels TSR i acaba; el bloc es redueix al tros.
+;  No es fa servir amb SHELL= (t‚ el seu stub), amb /R:n, ni si hi ha
+;  massa blocs tapats: llavors com abans.
+; =====================================================================
+RBLK    equ     32
+%define R(x)    ((x)-rstub+100h)        ; adre‡a un cop copiat a 0100h
+run_go: cmp     byte [isshell],0
+        jne     .no
+        cmp     byte [o_r],0
+        jne     .no
+        cmp     word [nblocked],RBLK*2
+        ja      .no
+        cmp     word [nkids],32
+        ja      .no
+        push    ds                      ; torna la INT 24h d'abans
+        lds     dx,[o24]
+        mov     ax,2524h
+        int     21h
+        pop     ds
+        push    cs
+        pop     es
+        cld
+        mov     ax,[pb_env]
+        mov     [r_pb],ax
+        mov     si,path
+        mov     di,r_path
+        mov     cx,80
+        rep     movsb
+        mov     si,tail
+        mov     di,r_tail
+        mov     cx,130
+        rep     movsb
+        mov     si,blocked
+        mov     di,r_blk
+        mov     cx,[nblocked]
+        mov     [r_nb],cx
+        rep     movsb
+        mov     si,kids
+        mov     di,r_kids
+        mov     cx,[nkids]
+        mov     [r_nk],cx
+        shl     cx,1
+        rep     movsb
+        mov     ax,[xseg]
+        mov     [r_xs],ax
+        mov     [r_psp],cs
+        mov     si,tail+1               ; FCB al PSP
+        mov     di,5Ch
+        mov     ax,2901h
+        int     21h
+        mov     di,6Ch
+        mov     ax,2901h
+        int     21h
+        mov     ax,5801h                ; (0.24) el tros, a dalt de tot
+        mov     bx,2                    ;   (l'£ltim lloc que hi cap: no fa
+        int     21h                     ;   forats), la convencional ja ‚s
+        mov     bx,RPARAS-10h           ;   tapada; a baix nom‚s hi queda
+        mov     ah,48h                  ;   el PSP
+        int     21h
+        pushf
+        push    ax
+        mov     ax,5801h
+        xor     bx,bx                   ; com sempre: el primer que hi cap
+        int     21h
+        pop     ax
+        popf
+        mov     dx,cs
+        jc      .lw
+        sub     ax,10h                  ; segment amb el tros a l'offset 100h
+        mov     dx,ax
+.lw:    mov     ax,[xseg]               ; el ganxo destapa amb el tros
+        or      ax,ax
+        jz      .nx
+        push    ds
+        mov     ds,ax
+        mov     word [xh_ub-xh],R(r_xunbl)
+        mov     [xh_ub-xh+2],dx
+        pop     ds
+.nx:    mov     es,dx
+        mov     si,rstub
+        mov     di,100h
+        mov     cx,rstub_end-rstub
+        cli
+        rep     movsb
+        push    dx
+        mov     ax,100h
+        push    ax
+        retf
+.no:    ret
+
+rstub:  mov     ax,cs
+        cli
+        mov     ss,ax
+        mov     sp,RTOP
+        sti
+        mov     ds,ax
+        mov     es,ax
+        cld
+        mov     [R(r_pb)+4],ax
+        mov     bx,[R(r_psp)]           ; els FCB s¢n al PSP
+        mov     [R(r_pb)+8],bx
+        mov     [R(r_pb)+12],bx
+        mov     es,bx
+        cmp     ax,bx                   ; tros al PSP: el bloc, fins al tros;
+        mov     bx,RPARAS               ;   tros a dalt: nom‚s el PSP
+        je      .rz
+        mov     bx,10h
+.rz:    mov     ah,4Ah
+        int     21h
+        push    cs
+        pop     es
+        mov     ax,[R(r_psp)]           ; el tros alliberat, tamb‚ tapat
+        add     ax,bx
+        mov     dx,[R(r_psp)]
+        push    ds
+        mov     ds,ax
+        cmp     word [1],0
+        jne     .nf
+        mov     [1],dx
+        pop     ds
+        mov     di,[R(r_nb)]
+        mov     [R(r_blk)+di],ax
+        add     word [R(r_nb)],2
+        jmp     short .ex
+.nf:    pop     ds
+.ex:    call    .exec
+        jnc     .ok
+        cmp     ax,8                    ; no hi cap a dalt: a baix
+        jne     .err
+        mov     dx,R(r_mlow)
+        mov     ah,9
+        int     21h
+        call    .exec
+        jnc     .ok
+.err:   mov     dx,R(r_mxerr)
+        mov     ah,9
+        int     21h
+        mov     ax,4C01h
+        int     21h
+.ok:    call    r_name
+        mov     ah,4Dh
+        int     21h
+        mov     ah,4Ch
+        int     21h
+.exec:  mov     [R(r_sp)],sp
+        mov     dx,R(r_path)
+        mov     bx,R(r_pb)
+        mov     ax,4B00h
+        int     21h
+        cli
+        mov     bx,cs
+        mov     ss,bx
+        mov     sp,[cs:R(r_sp)]
+        sti
+        mov     ds,bx
+        mov     es,bx
+        cld
+        pushf
+        push    ax
+        call    r_unhk
+        call    r_unbl
+        pop     ax
+        popf
+        ret
+
+r_unbl: push    es
+        mov     bx,[R(r_nb)]
+.l:     or      bx,bx
+        jz      .e
+        dec     bx
+        dec     bx
+        mov     es,[R(r_blk)+bx]
+        mov     ax,[R(r_psp)]
+        cmp     [es:1],ax
+        jne     .l
+        mov     word [es:1],0
+        jmp     .l
+.e:     mov     word [R(r_nb)],0
+        pop     es
+        ret
+
+r_xunbl:
+        push    ds
+        push    es
+        push    ax
+        push    bx
+        push    cs
+        pop     ds
+        call    r_unbl
+        pop     bx
+        pop     ax
+        pop     es
+        pop     ds
+        retf
+
+r_unhk: mov     ax,[R(r_xs)]
+        or      ax,ax
+        jz      .r
+        push    es
+        mov     es,ax
+        mov     byte [es:xh_st-xh],0    ; ja no fa res
+        push    ax
+        mov     ax,3521h
+        int     21h
+        pop     ax
+        cmp     bx,0                    ; encara ‚s la nostra?
+        jne     .q
+        mov     bx,es
+        cmp     bx,ax
+        jne     .q
+        mov     es,ax
+        push    ds
+        lds     dx,[es:xh_old-xh]
+        mov     ax,2521h
+        int     21h
+        pop     ds
+        mov     ah,49h
+        int     21h
+.q:     pop     es
+        mov     word [R(r_xs)],0
+.r:     ret
+
+; el nom del programa als blocs de PSP fills nostres nous (TSR)
+r_name: mov     si,R(r_path)
+        mov     bx,si
+.f:     lodsb
+        or      al,al
+        jz      .f2
+        cmp     al,'\'
+        je      .fs
+        cmp     al,':'
+        jne     .f
+.fs:    mov     bx,si
+        jmp     .f
+.f2:    mov     [R(r_nm)],bx
+        push    es
+        mov     ah,52h
+        int     21h
+        mov     ax,[es:bx-2]
+        mov     cx,4000
+.l:     mov     es,ax
+        mov     dx,ax
+        inc     dx
+        cmp     [es:1],dx
+        jne     .n
+        push    es
+        mov     es,dx
+        cmp     word [es:0],20CDh
+        jne     .np
+        mov     dx,[R(r_psp)]
+        cmp     [es:16h],dx
+.np:    pop     es
+        jne     .n
+        push    cx                      ; ja hi era abans?
+        push    di
+        push    es
+        push    ds
+        pop     es
+        mov     di,R(r_kids)
+        mov     cx,[R(r_nk)]
+        jcxz    .nk
+        repne   scasw
+        jmp     short .k
+.nk:    or      cx,1                    ; ZF=0
+.k:     pop     es
+        pop     di
+        pop     cx
+        je      .n
+        push    si
+        push    di
+        push    cx
+        mov     si,[R(r_nm)]
+        mov     di,8
+        mov     cx,8
+.p:     lodsb
+        or      al,al
+        jz      .pz
+        cmp     al,'.'
+        je      .pz
+        mov     [es:di],al
+        inc     di
+        loop    .p
+        jmp     short .px
+.pz:    mov     byte [es:di],0
+        inc     di
+        loop    .pz
+.px:    pop     cx
+        pop     di
+        pop     si
+.n:     cmp     byte [es:0],'Z'
+        je      .e
+        add     ax,[es:3]
+        inc     ax
+        loop    .l
+.e:     pop     es
+        ret
+
+r_mlow  db      'No hi cap a la zona alta: es carrega a la mem•ria convencional.',CR,LF,'$'
+r_mxerr db      'No s',27h,'ha pogut executar el programa.',CR,LF,'$'
+r_pb    dw      0,R(r_tail),0,5Ch,0,6Ch,0
+r_xs    dw      0
+r_psp   dw      0                       ; (0.24) el nostre PSP (a baix)
+r_sp    dw      0
+r_nm    dw      0
+r_nb    dw      0
+r_nk    dw      0
+r_kids  times 32 dw 0
+r_blk   times RBLK+1 dw 0
+r_path  times 80 db 0
+r_tail  times 130 db 0
+rstub_end:
+RTOP    equ     (rstub_end-rstub+100h+192) & 0FFFEh
+RPARAS  equ     (rstub_end-rstub+100h+192+15) >> 4
 
 ; =====================================================================
 ;  Dades sense valor inicial (es posen a zero en arrencar)
