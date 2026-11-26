@@ -1,4 +1,4 @@
-GEMGO 0.14 - On carrega GEMHI les aplicacions i accessoris GEM (PC1512)
+GEMGO 0.19 - On carrega GEMHI les aplicacions i accessoris GEM (PC1512)
 =====================================================================
 
 QuŠ fa
@@ -14,6 +14,15 @@ Accessoris: nom‚s el programa (Alta o Conv). Un accessori no t‚ proc‚s
 propi (s'executa dins el GEM): no es pot saber quina mem•ria demana ell,
 i a la columna Dades hi surt --.
 L'escriptori (DESKTOP.APP) ‚s un .APP com els altres.
+Accessoris desactivats: GEMGO tamb‚ troba els .ACX (accessoris que el
+GEM no carrega, perquŠ nom‚s carrega els .ACC de \GEMBOOT). Surten
+en gris, amb el nom .ACX. Amb la tecla A, l'accessori triat passa de
+.ACC a .ACX (desactivat) o al rev‚s (activat): es canvia el nom del
+fitxer al moment, i compta la propera vegada que s'engega el GEM (per
+exemple, amb Intro des de GEMGO).
+A la llista hi surten primer tots els .APP i, a sota d'una l¡nia
+("Accessoris (.ACC)"), els .ACC. La l¡nia no es pot triar: les fletxes
+la salten.
 
 és
 --
@@ -24,10 +33,27 @@ L'escriptori (DESKTOP.APP) ‚s un .APP com els altres.
    P    canvia el programa (Alta <-> Conv)
    D    canvia les dades (Conv <-> Alta); en un accessori, xiulet
    T    treu la marca (torna a Alta / Conv)
+   A    accessori: l'activa (.ACC) o el desactiva (.ACX)
    Intro obre l'aplicaci¢ triada amb el GEM: executa
         X:\GEM.BAT ruta-de-l'aplicaci¢ (X: la unitat on cerca), com
         si escrivissis GEM PAINT. En sortir del GEM, torna a GEMGO a
-        la carpeta on eres i en rellegeix les mesures.
+        la carpeta on eres, amb la mateixa aplicaci¢ triada, i en
+        rellegeix les mesures.
+        Mentre corre el GEM, de GEMGO nom‚s en queda un tros de mig KB
+        (uns 770 bytes, amb el PSP, m‚s l'entorn del DOS), al mateix lloc
+        on era GEMGO: a la mem•ria alta si l'has engegat amb LOADHI
+        GEMGO, a la convencional si l'has engegat amb GEMGO. La resta
+        (el programa i la llista) es desa a GEMGO.$$$, a la mateixa
+        carpeta que GEMGO.COM i ocult (0.19), que es torna a llegir i
+        s'esborra en tornar. Si n'ha quedat un d'abans (GEMGO no va
+        tornar b‚), GEMGO l'esborra en arrencar. Si aquest fitxer no es pot
+        escriure (disc protegit, ple...), GEMGO es queda sencer a la
+        mem•ria com abans (uns 24 KB) i tot funciona igual.
+        El GEM.BAT l'executa un COMMAND.COM (COMMAND /C): des de la
+        0.17, aquest COMMAND va a la mem•ria alta si hi cap (uns
+        3,8 KB), i la seva part transit•ria a la convencional, com
+        quan escrius GEM a la l¡nia d'ordres. Si a dalt no hi cap, va
+        a la convencional com abans. Tamb‚ amb LOADHI GEMGO (0.18).
    Esc  surt
    F1   ajuda: una finestra amb les tecles, les columnes i els colors
         (qualsevol tecla la tanca)
@@ -134,8 +160,9 @@ Coses a saber
 - Llista de fins a 100 aplicacions, rutes de fins a 65 car…cters.
 - Per obrir aplicacions amb Intro cal X:\GEM.BAT (el que engega el
   GEM, amb GEMHI si el fas servir) que passi el par…metre a GEMVDI
-  (amb GEMHI 0.21: GEMHI /A:HVRS /B:G GEMVDI %1 %2). Mentre el GEM corre, GEMGO ocupa uns 20 KB de
-  mem•ria convencional.
+  (amb GEMHI 0.22: GEMHI /A:HVRS /B:GC GEMVDI %1 %2). Mentre el GEM
+  corre, de GEMGO nom‚s en queda mig KB, i el COMMAND.COM que executa
+  el GEM.BAT va a dalt (vegeu Intro, a dalt).
 - Muntatge: nasm -f bin GEMGO.ASM -o GEMGO.COM (el font ‚s en CP850).
 
 Fitxers
@@ -146,6 +173,28 @@ GEMGO.TXT   aquest fitxer
 
 Historial
 ---------
+0.19 26-11-2026  GEMGO.$$$ es crea a la carpeta de GEMGO.COM (abans, a
+                 l'arrel de la unitat on cerca) i ocult; en arrencar,
+                 GEMGO esborra el que hagi quedat d'una vegada que no va
+                 tornar b‚.
+0.18 26-11-2026  Amb LOADHI GEMGO, el COMMAND.COM del GEM.BAT anava a la
+                 convencional: LOADHI (0.22) t‚ la convencional tapada
+                 fins que el programa fa el primer EXEC, i llavors la
+                 destapa, just quan GEMGO la volia tapar ell. Ara GEMGO
+                 fa primer un EXEC buit (4BFFh, no fa res) perquŠ LOADHI
+                 la destapi, i despr‚s la tapa ell.
+0.17 26-11-2026  Intro: el COMMAND.COM que executa el GEM.BAT va a la
+                 mem•ria alta si hi cap (abans, uns 3,8 KB de la
+                 convencional). El tros que queda creix de 496 a 752
+                 bytes.
+0.16 26-11-2026  A: activa o desactiva l'accessori triat (.ACC <-> .ACX);
+                 els desactivats surten en gris.
+0.15 25-11-2026  Mentre corre el GEM (Intro), de GEMGO nom‚s en queda un
+                 tros de 496 bytes, on era GEMGO (alta amb LOADHI,
+                 baixa sense); la resta es desa a X:\GEMGO.$$$ i es
+                 torna a llegir en tornar (abans: uns 20 KB a la
+                 mem•ria). A la llista, primer els .APP, una l¡nia i
+                 els .ACC.
 0.14 23-11-2026  Es diu GEMGO (abans APPHI). F1: finestra d'ajuda.
 0.13 22-11-2026  Amb GEMHI 0.14, sense marca el programa d'una
                  aplicaci¢ va a baix (Conv); els accessoris i

@@ -1,9 +1,17 @@
 ; =====================================================================
 ;  GEMGO.ASM - Tria on carrega GEMHI cada aplicacio GEM (.APP):
 ;              (fins a la 0.13 es deia APPHI). F1: ajuda (0.14).
+;              0.15: mentre corre el GEM, nomes en queda el tros (mig KB);
+;              a la llista, primer els .APP, una linia i els .ACC.
+;              0.16: A activa o desactiva un accessori (.ACC <-> .ACX).
+;              0.17: el COMMAND.COM que obre el GEM.BAT, a la memoria alta.
+;              0.18: tambe amb LOADHI GEMGO (LOADHI 0.22 destapa la
+;              convencional al primer EXEC).
+;              0.19: GEMGO.$$$ ocult i al costat de GEMGO.COM; en
+;              arrencar s'esborra el que hagi quedat.
 ;              programa i dades, a la memoria alta o a la convencional;
 ;              i cada accessori (.ACC, nomes el programa: GEMHI 0.7).
-;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.14
+;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.19
 ;  Intro (0.9): obre l'aplicacio triada amb X:\GEM.BAT ruta (COMMAND /C),
 ;  i en tornar en rellegeix les mesures.
 ;
@@ -56,6 +64,7 @@ MAXNIV  equ     8               ; nivells de carpetes
 LROWS   equ     19              ; files de la llista (2..20)
 LTOP    equ     2
 A_NOR   equ     07h
+A_OFF   equ     08h             ; (0.16) accessori desactivat (.ACX)
 A_SEL   equ     70h
 A_TIT   equ     70h
 A_BO    equ     0Ch             ; fila de detall: lletra vermella clara
@@ -182,7 +191,19 @@ dibuixa:
         jne     .a
         mov     bl, A_SEL
 .a:     call    entrada
-        push    si
+        cmp     byte [si+E_ACC], 2      ; (0.15) la linia entre .APP i .ACC
+        jne     .a2
+        mov     ah, A_NOR
+        mov     si, t_sep
+        mov     cx, 80
+        call    camp
+        jmp     .x
+.a2:    cmp     bl, A_NOR               ; (0.16) desactivat: gris
+        jne     .a3
+        call    desact
+        jne     .a3
+        mov     bl, A_OFF
+.a3:    push    si
         ; nom (13) i carpeta (23): la ruta sencera es a la fila 21
         mov     ah, bl
         mov     cx, 1
@@ -1119,6 +1140,8 @@ es_acc: push    si
         jne     .x
         cmp     byte [si-2], 'C'
         jne     .x
+        cmp     byte [si-1], 'X'        ; (0.16) tambe els desactivats
+        je      .x
         cmp     byte [si-1], 'C'
 .x:     pop     si
         ret
@@ -1192,6 +1215,73 @@ registre:
         jmp     .e
 .x:     ret
 
+; (0.15) primer els .APP, en l'ordre que s'han trobat, i despres els
+; .ACC; entre els dos grups, una entrada separadora (E_ACC = 2)
+ordena: push    ds
+        pop     es
+        xor     bx, bx                  ; BX: on va el proper .APP
+        xor     dx, dx                  ; DX: entrada que es mira
+.l:     cmp     dx, [napps]
+        jae     .s
+        mov     ax, dx
+        call    entrada
+        cmp     byte [si+E_ACC], 0
+        jne     .n
+        cmp     dx, bx
+        je      .k
+        mov     di, hbig                ; l'entrada, a part
+        mov     cx, ESIZE
+        push    si
+        rep     movsb
+        pop     si                      ; corre BX..DX-1 una entrada avall
+        lea     si, [si-1]
+        lea     di, [si+ESIZE]
+        mov     ax, dx
+        sub     ax, bx
+        mov     cx, ESIZE
+        push    dx
+        mul     cx
+        pop     dx
+        mov     cx, ax
+        std
+        rep     movsb
+        cld
+        mov     ax, bx                  ; i l'entrada, al seu lloc
+        call    entrada
+        mov     di, si
+        mov     si, hbig
+        mov     cx, ESIZE
+        rep     movsb
+.k:     inc     bx
+.n:     inc     dx
+        jmp     .l
+.s:     or      bx, bx                  ; nomes si hi ha dels dos
+        jz      .x
+        cmp     bx, [napps]
+        jae     .x
+        mov     ax, [napps]             ; corre BX.. una entrada avall
+        call    entrada
+        lea     di, [si+ESIZE-1]
+        lea     si, [si-1]
+        mov     ax, [napps]
+        sub     ax, bx
+        mov     cx, ESIZE
+        mul     cx
+        mov     cx, ax
+        std
+        rep     movsb
+        cld
+        mov     ax, bx
+        call    entrada
+        mov     di, si
+        mov     cx, ESIZE
+        xor     al, al
+        rep     stosb
+        mov     byte [si+E_ACC], 2
+        mov     byte [si+E_ST], 0FEh
+        inc     word [napps]
+.x:     ret
+
 ; copia SI (ASCIIZ) a DI, amb el 0; DI queda sobre el 0
 copia:  push    ax
 .l:     lodsb
@@ -1211,6 +1301,8 @@ inici:  cld
         mov     ah, 4Ah
         int     21h
         call    comsp
+        call    nomtmp                  ; (0.19) GEMGO.$$$, al costat de
+        call    esbtmp                  ;   GEMGO.COM; el d'abans, fora
         mov     ah, 0Fh                 ; mode de video
         int     10h
         mov     [vmode], al
@@ -1271,6 +1363,7 @@ inici:  cld
 
         xor     ax, ax
         call    cerca
+        call    ordena                  ; (0.15) .APP, linia, .ACC
         mov     dx, 80h                 ; la DTA, al seu lloc
         mov     ah, 1Ah
         int     21h
@@ -1306,7 +1399,10 @@ tecla:  xor     ah, ah
         je      k_d
         cmp     al, 'T'
         je      k_t
-        mov     al, ah
+        cmp     al, 'A'                 ; (0.16) activa / desactiva l'accessori
+        jne     .t2
+        jmp     k_a
+.t2:    mov     al, ah
         mov     bx, [sel]
         cmp     al, 48h
         je      .amunt
@@ -1344,7 +1440,18 @@ mou:    mov     ax, [napps]
         cmp     bx, ax
         jbe     .b
         mov     bx, ax
-.b:     cmp     bx, [sel]
+.b:     push    si                      ; (0.15) la linia separadora no es tria
+        mov     ax, bx
+        call    entrada
+        cmp     byte [si+E_ACC], 2
+        pop     si
+        jne     .b2
+        cmp     bx, [sel]
+        jb      .b1
+        inc     bx                      ; avall: la seguent
+        jmp     short .b2
+.b1:    dec     bx                      ; amunt: l'anterior
+.b2:    cmp     bx, [sel]
         je      tecla
         mov     ax, [sel]
         mov     [sel], bx
@@ -1400,6 +1507,55 @@ canvia: mov     ax, [sel]
         mov     si, t_noesc
         call    avis
 .f:     jmp     tecla
+
+; (0.16) A: un accessori, de .ACC a .ACX (el GEM no el carrega) o al
+; reves. Es canvia el nom del fitxer al moment
+k_a:    mov     ax, [sel]
+        call    entrada
+        cmp     byte [si+E_ACC], 1
+        jne     .bip
+        mov     di, nounom              ; el nom nou: la darrera lletra
+        push    si
+        call    copia
+        pop     si
+        mov     al, [di-1]
+        mov     ah, 'X'
+        cmp     al, 'C'
+        je      .n
+        mov     ah, 'C'
+.n:     mov     [di-1], ah
+        mov     dx, si                  ; rename
+        mov     di, nounom
+        push    ds
+        pop     es
+        mov     ah, 56h
+        int     21h
+        jc      .err
+        mov     di, si                  ; el nom nou, a la llista
+        mov     si, nounom
+        call    copia
+        mov     ax, [sel]
+        call    dibuixa
+        call    detall
+        jmp     tecla
+.err:   mov     si, t_noesc
+        call    avis
+        jmp     tecla
+.bip:   mov     ax, 0E07h               ; no es un accessori: xiulet
+        int     10h
+        jmp     tecla
+
+; ZF=1 si l'entrada SI es un accessori desactivat (.ACX)
+desact: cmp     byte [si+E_ACC], 1
+        jne     .x
+        push    si
+.l:     cmp     byte [si], 0
+        je      .f
+        inc     si
+        jmp     .l
+.f:     cmp     byte [si-1], 'X'
+        pop     si
+.x:     ret
 
 ; COMSPEC= de l'entorn -> comspec (si no n'hi ha, C:\COMMAND.COM)
 comsp:  push    ds
@@ -1502,7 +1658,10 @@ obre:   mov     ax, [sel]
         mov     bh, 0
         xor     dx, dx
         int     10h
-        mov     [pb_t+4], cs
+        call    desa                    ; (0.15) GEMGO, a GEMGO.$$$; aqui
+        jc      .vell                   ;   nomes en queda un tros petit
+        jmp     petit
+.vell:  mov     [pb_t+4], cs            ; si no s'ha pogut desar: com abans
         mov     [pb_t+8], cs
         mov     [pb_t+12], cs
         mov     [svsp], sp
@@ -1520,7 +1679,7 @@ obre:   mov     ax, [sel]
         mov     ds, ax
         mov     es, ax
         cld
-        mov     dl, [sdrv]              ; on erem
+.torna: mov     dl, [sdrv]              ; on erem
         mov     ah, 0Eh
         int     21h
         mov     dx, sdir
@@ -1547,6 +1706,339 @@ obre:   mov     ax, [sel]
         call    llista
         call    detall
         jmp     tecla
+
+; ---------------------------------------------------------------------
+;  (0.15) Mentre corre el GEM, de GEMGO nomes en queda un tros petit:
+;  el PSP i 'tros' (uns 200 bytes). Tota la resta (programa, llista,
+;  seleccio) es desa a X:\GEMGO.$$$ i, en tornar del GEM, el tros fa
+;  creixer el bloc on era (alta o baixa, on l'hagi posat el DOS o
+;  LOADHI), el torna a llegir i continua a 'repren'.
+; ---------------------------------------------------------------------
+%define S(x) ((x)-tros+100h)
+
+; desa GEMGO a X:\GEMGO.$$$ (de 100h fins a la darrera entrada).
+; CF=1 si no s'ha pogut
+desa:   mov     ax, [napps]
+        mov     cx, ESIZE
+        mul     cx
+        add     ax, apps-100h
+        mov     [st_len], ax
+        mov     dx, tmpnom
+        mov     cx, 2                   ; (0.19) ocult
+        mov     ah, 3Ch
+        int     21h
+        jc      .x
+        mov     bx, ax
+        mov     dx, 100h
+        mov     cx, [st_len]
+        mov     ah, 40h
+        int     21h
+        jc      .e
+        cmp     ax, cx
+        jne     .e
+        mov     ah, 3Eh
+        int     21h
+        jc      .d
+        clc
+.x:     ret
+.e:     mov     ah, 3Eh
+        int     21h
+.d:     call    esbtmp
+        stc
+        ret
+
+; (0.19) esborra GEMGO.$$$ (si hi es): primer li treu l'atribut d'ocult
+esbtmp: mov     dx, tmpnom
+        xor     cx, cx
+        mov     ax, 4301h
+        int     21h
+        mov     ah, 41h
+        int     21h
+        ret
+
+; (0.19) tmpnom = carpeta de GEMGO.COM (del nom del programa, a
+; l'entorn) + GEMGO.$$$; si no se sap, X:\GEMGO.$$$ (unitat actual)
+nomtmp: push    ds
+        push    cs
+        pop     es
+        mov     di, tmpnom
+        mov     bx, di
+        mov     ax, [2Ch]
+        or      ax, ax
+        jz      .def
+        mov     ds, ax
+        xor     si, si
+.v:     cmp     byte [si], 0            ; les variables
+        je      .fv
+.s:     lodsb
+        or      al, al
+        jnz     .s
+        jmp     .v
+.fv:    inc     si
+        cmp     word [si], 1            ; DOS 3: hi ha el nom del programa
+        jb      .def
+        inc     si
+        inc     si
+.c:     lodsb
+        stosb
+        or      al, al
+        jz      .e
+        cmp     al, '\'
+        je      .sp
+        cmp     al, ':'
+        jne     .k
+.sp:    mov     bx, di
+.k:     cmp     di, tmpnom+66
+        jb      .c
+.e:     cmp     bx, tmpnom
+        jne     .nm
+.def:   mov     ah, 19h
+        int     21h
+        add     al, 'A'
+        mov     di, tmpnom
+        stosb
+        mov     ax, '\:'
+        xchg    ah, al
+        stosw
+        mov     bx, di
+.nm:    pop     ds
+        mov     di, bx
+        mov     si, t_tmpn
+        jmp     copia
+
+; prepara el tros i el posa a 100h (amb un trampoli al PSP, que no es
+; trepitja): d'aqui ja no es torna
+petit:  push    cs
+        pop     es
+        mov     si, comspec             ; el COMSPEC, al final del tros
+        mov     di, st_com
+        call    copia
+        inc     di
+        mov     ax, di                  ; (0.19) i el nom de GEMGO.$$$
+        sub     ax, tros-100h
+        mov     [st_tmpp], ax
+        mov     si, tmpnom
+        call    copia
+        inc     di
+        mov     ax, di                  ; on acaba el tros
+        sub     ax, tros-100h
+        mov     [st_xo], ax             ; i on es llegira GEMGO en tornar
+        add     ax, 15
+        mov     cl, 4
+        shr     ax, cl
+        mov     [st_par0], ax
+        mov     [st_pb+4], cs
+        mov     [st_pb+8], cs
+        mov     [st_pb+12], cs
+        mov     di, 6Ch                 ; un FCB buit
+        mov     cx, 20
+        xor     al, al
+        rep     stosb
+        mov     si, tail                ; la linia d'ordres, al PSP
+        mov     di, 80h
+        mov     cx, 128
+        rep     movsb
+        mov     si, st_tr               ; els dos trampolins, al PSP (5Ch,
+        mov     di, 5Ch                 ;   d'anada, i 63h, de tornada)
+        mov     cx, 14
+        rep     movsb
+        mov     si, tros
+        mov     di, 100h
+        mov     cx, [st_xo]
+        sub     cx, 100h
+        mov     ax, 5Ch
+        cli                             ; la pila, dins del tros
+        mov     sp, S(st_pila)
+        sti
+        jmp     ax
+
+st_tr:  db      0F3h, 0A4h, 0B8h        ; rep movsb / mov ax, 100h / jmp ax
+        dw      100h
+        db      0FFh, 0E0h
+        db      0F3h, 0A5h, 0B8h        ; rep movsw / mov ax, repren / jmp ax
+        dw      repren
+        db      0FFh, 0E0h
+
+; el tros: corre a 100h (adreces amb S)
+tros:   mov     bx, [S(st_par0)]        ; nomes el tros
+        mov     ah, 4Ah
+        int     21h
+        mov     ax, 4BFFh               ; (0.18) si ens ha engegat LOADHI, te
+        int     21h                     ;   la convencional tapada fins al
+                                        ;   primer EXEC: un EXEC buit la destapa
+        call    tapa                    ; (0.17) el COMMAND.COM que obre
+        mov     dx, S(st_com)           ;   el GEM.BAT, a la memoria alta
+        mov     bx, S(st_pb)            ;   si hi cap: la convencional
+        mov     ax, 4B01h               ;   tapada, 4B01h, i l'engeguem
+        int     21h                     ;   nosaltres
+        pushf
+        call    destapa
+        popf
+        jc      .baix
+        mov     ah, 51h                 ; el PSP del COMMAND
+        int     21h
+        mov     es, bx
+        mov     word [es:0Ah], S(.torna); quan acabi, torna aqui
+        mov     [es:0Ch], cs
+        mov     word [cs:2Eh], S(st_frm); el DOS hi torna amb el marc
+        mov     [cs:30h], cs            ;   (un 4B01h no el posa)
+        mov     ah, 50h
+        int     21h
+        mov     ds, bx                  ; DTA a PSP:80h
+        mov     dx, 80h
+        mov     ah, 1Ah
+        int     21h
+        cli
+        mov     ss, [cs:S(st_pb)+10h]
+        mov     sp, [cs:S(st_pb)+0Eh]
+        sti
+        push    cs                      ; el marc, a dalt de la nostra pila
+        pop     es                      ;   (ja no la fem servir): AX..BP
+        mov     di, S(st_frm)           ;   a zero, DS ES, IP CS FLAGS
+        xor     ax, ax
+        mov     cx, 7
+        cld
+        rep     stosw
+        mov     ax, cs
+        stosw
+        stosw
+        mov     ax, S(.torna)
+        stosw
+        mov     ax, cs
+        stosw
+        mov     ax, 0202h
+        stosw
+        mov     es, bx
+        mov     ds, bx
+        xor     ax, ax
+        jmp     far [cs:S(st_pb)+12h]
+.baix:  mov     dx, S(st_com)           ; no hi cap: com sempre
+        mov     bx, S(st_pb)
+        mov     ax, 4B00h
+        int     21h
+.torna: cli
+        mov     ax, cs
+        mov     ss, ax
+        mov     sp, S(st_pila)
+        sti
+        mov     ds, ax
+        mov     es, ax
+        cld
+        mov     bx, (fi_mem-start+100h+15)/16  ; tot GEMGO, al mateix lloc
+        mov     ah, 4Ah
+        int     21h
+        jc      .err
+        mov     dx, [S(st_tmpp)]
+        mov     ax, 3D00h
+        int     21h
+        jc      .err
+        mov     bx, ax
+        mov     dx, [S(st_xo)]
+        mov     cx, [S(st_len)]
+        mov     ah, 3Fh
+        int     21h
+        pushf
+        push    ax
+        mov     ah, 3Eh
+        int     21h
+        pop     ax
+        popf
+        jc      .err
+        cmp     ax, [S(st_len)]
+        jne     .err
+        mov     dx, [S(st_tmpp)]
+        xor     cx, cx
+        mov     ax, 4301h
+        int     21h
+        mov     ah, 41h
+        int     21h
+        mov     si, [S(st_xo)]
+        mov     di, 100h
+        mov     cx, [S(st_len)]
+        inc     cx
+        shr     cx, 1
+        mov     ax, 63h                 ; el trampoli de tornada (PSP)
+        jmp     ax
+.err:   mov     dx, S(st_msg)
+        mov     ah, 9
+        int     21h
+        mov     ax, 4C01h
+        int     21h
+st_pb   dw      0, 80h, 0, 6Ch, 0, 6Ch, 0
+        dw      0, 0, 0, 0              ; (0.17) 4B01h: SS:SP i CS:IP
+st_bl   times   9 dw 0                  ; blocs tapats
+; (0.17) tapa (a nom nostre) els blocs lliures de la convencional, i
+; destapa: els torna a deixar lliures
+tapa:   push    es
+        mov     ah, 52h
+        int     21h
+        mov     ax, [es:bx-2]
+        push    ax
+        int     12h
+        mov     cl, 6
+        shl     ax, cl
+        mov     dx, ax
+        pop     ax
+        mov     di, S(st_bl)
+.l:     mov     es, ax
+        cmp     ax, dx
+        jae     .e
+        cmp     word [es:1], 0
+        jne     .n
+        cmp     di, S(st_bl)+16
+        jae     .n
+        mov     [es:1], cs
+        mov     [cs:di], ax
+        inc     di
+        inc     di
+.n:     cmp     byte [es:0], 'Z'
+        je      .e
+        add     ax, [es:3]
+        inc     ax
+        jmp     .l
+.e:     mov     word [cs:di], 0
+        pop     es
+        ret
+destapa:
+        push    ax
+        push    si
+        push    es
+        mov     si, S(st_bl)
+.l:     mov     ax, [cs:si]
+        or      ax, ax
+        jz      .e
+        mov     es, ax
+        mov     ax, cs
+        cmp     [es:1], ax
+        jne     .n
+        mov     word [es:1], 0
+.n:     inc     si
+        inc     si
+        jmp     .l
+.e:     pop     es
+        pop     si
+        pop     ax
+        ret
+st_par0 dw      0
+st_len  dw      0
+st_xo   dw      0
+st_msg  db      'GEMGO.$$$?', 13, 10, '$'
+st_tmpp dw      0                       ; (0.19) nom de GEMGO.$$$ (darrere el COMSPEC)
+        times   48 db 0
+st_pila:
+st_frm  equ     st_pila-24              ; (0.17) marc de tornada del COMMAND
+st_com  times   160 db 0                ; COMSPEC i GEMGO.$$$ (nomes la llargada que fan)
+
+; ja hi tornem a ser, sencers: com despres de l'EXEC d'abans
+repren: cli
+        mov     ax, cs
+        mov     ss, ax
+        mov     sp, fi_mem
+        sti
+        mov     ds, ax
+        mov     es, ax
+        cld
+        jmp     obre.torna
 
 ; F1: finestra d'ajuda damunt la llista; en tancar-la, torna el que hi
 ; havia a sota (no es redibuixa res mes)
@@ -1618,10 +2110,10 @@ t_aj:
         db      'º ', 18h, 19h, ' ReP…g AvP…g Inici Fi  tria      Intro  obre l', 27h, 'aplicaci¢ amb GEM º'
         db      'º P  programa Alta / Conv             D  dades Alta / Conv           º'
         db      'º T  treu la marca (el fitxer com era)  Esc  surt          F1  ajuda º'
-        db      'º                                                                    º'
+        db      'º A  accessori activat / desactivat (.ACC <-> .ACX), per al GEM nou  º'
         db      'º Prog, Dades  KB mesurats per GEMHI (~: calculat de la cap‡alera)   º'
         db      'º Bl           blocs de dades       Crx  ha demanat cr‚ixer (P, D)   º'
-        db      'º                                                                    º'
+        db      'º Mentre corre el GEM (Intro), de GEMGO nom‚s en queda mig KB.       º'
         db      'º Vermell: el que far… GEMHI.  Verd: sense GEMHI.                    º'
         db      'º Groc: arriscat (Crx P o D amb aquella part a Alta), o no es        º'
         db      'º pot marcar (motiu a sota de la llista).                            º'
@@ -1656,12 +2148,15 @@ neteja: mov     ax, 0600h
 ; ---------------------------------------------------------------------
 ;  Textos (CP850)
 ; ---------------------------------------------------------------------
-t_tit   db      ' GEMGO 0.14 - On carrega GEMHI (0.18) les aplicacions i els accessoris del GEM', 0
+t_tit   db      ' GEMGO 0.19 - On carrega GEMHI (0.24) les aplicacions i els accessoris del GEM', 0
 t_cerc  db      ' Cercant les aplicacions (.APP) i els accessoris (.ACC)...', 0
 t_cap1  db      ' Nom          Carpeta                         Prog Dades  Bl Crx  Tria P Tria D', 0
 t_cap0  db      ' No hi ha cap aplicaci¢ (.APP) ni accessori (.ACC) en aquesta unitat. Prem una tecla.', 0
-t_tecl  db      ' F1 ajuda  ', 18h, 19h, ' tria  Intro obre  P programa  D dades  T treu marca  Esc surt', 0
+t_tecl  db      ' F1 ajuda  ', 18h, 19h, ' tria  Intro obre  P prog  D dades  T treu  A accessori  Esc surt', 0
 t_sp    db      ' ', 0
+t_sep   db      ' ', 0C4h, 0C4h, ' Accessoris (.ACC) '   ; (0.15) entre .APP i .ACC
+        times 58 db 0C4h
+        db      0
 t_3p    db      '...', 0
 t_mes   db      '¯', 0
 t_guio  db      '  --', 0
@@ -1678,6 +2173,8 @@ t_gbat  db      'C:\GEM.BAT', 0
 t_nogem db      " No trobo GEM.BAT a l'arrel de la unitat (Intro l'obre amb GEM.BAT ruta).", 0
 t_cs    db      'COMSPEC='
 comspec db      'C:\COMMAND.COM', 0
+tmpnom  times 80 db 0           ; (0.19) X:\carpeta\GEMGO.$$$
+t_tmpn  db      'GEMGO.$$$', 0
         times 66 db 0
 tail    times 128 db 0
 pb_t    dw      0, tail, 0, 5Ch, 0, 6Ch, 0
@@ -1716,7 +2213,7 @@ t_noll2 db      " No s'ha pogut llegir el fitxer.", 0
 t_nomar db      ' Amb GEMHI: com sense marca (a dalt si hi cap; dades a baix).', 0
 t_noesc db      " No s'ha pogut escriure (fitxer nom‚s de lectura?).", 0
 t_tot   db      '\*.*', 0
-t_us    db      'GEMGO 0.14 - On carrega GEMHI les aplicacions i accessoris GEM', 13, 10
+t_us    db      'GEMGO 0.19 - On carrega GEMHI les aplicacions i accessoris GEM', 13, 10
         db      'és: GEMGO [unitat:]      (per defecte C:)', 13, 10, '$'
 
 ; ---------------------------------------------------------------------
@@ -1748,11 +2245,12 @@ rend    dw      0
 wlen    dw      0
 woff    dw      0
 hbuf    times 32 db 0
+nounom  times 80 db 0           ; (0.16) A: el nom nou (.ACC / .ACX)
 buf     db      'C:'
         times 80 db 0
 dtas    times 43*MAXNIV db 0
 apps:
-hbig    equ     apps + MAXAPP*ESIZE     ; capcalera llegida (HMAX bytes)
+hbig    equ     apps + (MAXAPP+1)*ESIZE ; capcalera llegida (HMAX bytes; +1: la linia)
 logbuf  equ     hbig + HMAX             ; GEMHI.LOG (LOGMAX*24 bytes)
 ajsave  equ     logbuf + LOGMAX*24      ; F1: el que hi ha sota la finestra
 fi_mem  equ     ajsave + 19*70*2 + 800h  ; i la pila (finestra F1: 19x70)
