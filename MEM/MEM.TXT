@@ -1,4 +1,4 @@
-MEM per a MS-DOS 3.20                                       versi¢ 0.27
+MEM per a MS-DOS 3.20                                       versi¢ 0.30
 =====================                                       15-11-2026
 
 QuŠ ‚s
@@ -145,6 +145,20 @@ Recomanacions
 
 Historial
 ---------
+0.30 26-11-2026  Totes les sortides acaben amb la versi¢ ("MEM 0.30 para
+                 MS-DOS 3.x"), per saber sempre quin MEM s'ha executat.
+0.29 26-11-2026  La "Parte transitoria" es decideix pel PSP:2 del COMMAND
+                 (on la hi posa de deb•): nom‚s hi surt si cau dins el
+                 bloc lliure de sobre. La 0.28 es fixava en el pare, i
+                 el COMMAND.COM 3.20 sempre es fa pare de si mateix.
+                 Amb GEMHI 0.24 i C a dalt, la transit•ria ‚s a la
+                 convencional i el bloc de dalt surt lliure.
+0.28 26-11-2026  La "Parte transitoria" del COMMAND.COM a la mem•ria
+                 superior, nom‚s per al COMMAND principal (el de
+                 LOADHI /C, que ‚s el seu propi pare). Un COMMAND.COM
+                 secundari (la Shell de DOS del GEM, COMMAND /C) deixa la
+                 part transit•ria al capdamunt de la convencional: el
+                 bloc lliure que t‚ a sobre ara surt com a lliure.
 0.27 23-11-2026  HIDOS 0.10: les taules a baix (FILES, FCBS, BUFFERS)
                  surten amb el seu nom i "Datos de sistema" a MEM /D, i
                  dins MSDOS a MEM /C. La ubicaci¢ "DOS (CONFIG.SYS)"
