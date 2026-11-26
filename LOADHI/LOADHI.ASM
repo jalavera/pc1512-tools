@@ -1,5 +1,5 @@
 ;  LOADHI.ASM  -  carrega programes a la mem•ria superior amb MS-DOS 3.x
-;                                                               versi¢ 0.24
+;                                                               versi¢ 0.28
 ;  és:  LOADHI [@fitxer] [/H:inici[-final]] [/F] [/B:n] [/FILES:n] [/C]
 ;              [/R:n] [/RB:n] [/RC:n] [programa [par…metres]]
 ;
@@ -107,6 +107,7 @@ start:  cld
         mov     cl,6
         shl     ax,cl
         mov     [convtop],ax
+        call    xclean                  ; (0.26) ganxos vells, fora
         TSTEP   '<'
         call    parse
         TSTEP   'C'
@@ -1464,6 +1465,7 @@ xhook:  mov     word [xseg],0
         mov     word [es:8],'LO'
         mov     word [es:10],'AD'
         mov     word [es:12],'HI'
+        mov     word [es:14],0          ; (0.28) la resta del nom, buida
         pop     es
         mov     ax,3521h
         int     21h
@@ -1511,6 +1513,47 @@ xunhook:
         mov     word [xseg],0
 .r:     ret
 
+; (0.26) Un ganxo d'un LOADHI d'abans que ha quedat (desactivat) perquŠ
+; un resident s'hi havia posat al davant: si ara torna a ser el primer
+; de la INT 21h (el resident ja no hi ‚s), es treu i el bloc s'allibera.
+; Es reconeix pel bloc (del sistema, nom LOADHI), el codi (el de la 0.27
+; a l'offset 0) i l'estat (desactivat). Des de la 0.27 el ganxo ja es
+; treu sol; aixo queda per si de cas.
+xclean: push    es
+.l:     mov     ax,3521h
+        int     21h
+        or      bx,bx
+        jnz     .x
+        mov     ax,es
+        dec     ax
+        push    es
+        mov     es,ax
+        cmp     word [es:1],8
+        jne     .n
+        cmp     word [es:8],'LO'
+        jne     .n
+        cmp     word [es:10],'AD'
+        jne     .n
+        cmp     word [es:12],'HI'
+.n:     pop     es
+        jne     .x
+        cmp     word [es:0],802Eh       ; cmp byte [cs:xh_st],0 (0.27)
+        jne     .x
+        cmp     byte [es:2],3Eh
+        jne     .x
+        cmp     byte [es:xh_st-xh],0
+        jne     .x
+        push    ds
+        lds     dx,[es:xh_old-xh]
+        mov     ax,2521h
+        int     21h
+        pop     ds
+        mov     ah,49h
+        int     21h
+        jmp     .l
+.x:     pop     es
+        ret
+
 ; (crida llunyana des del ganxo) destapa la convencional
 xunbl:  push    ds
         push    es
@@ -1526,16 +1569,39 @@ xunbl:  push    ds
         retf
 
 ; plantilla del ganxo (es copia a un bloc seu, a l'offset 0)
-xh:     cmp     ah,4Bh
+xh:     cmp     byte [cs:xh_st-xh],0    ; (0.27) desactivat: si ja torna a
+        je      .d                      ;   ser el primer, es treu sol
+        cmp     ah,4Bh
         jne     .c
         cmp     byte [cs:xh_st-xh],1
-        jb      .c                      ; 0: desactivat
         je      .u
         dec     byte [cs:xh_st-xh]      ; 2: el de LOADHI, passa
         jmp     short .c
 .u:     mov     byte [cs:xh_st-xh],0    ; 1: el del programa: destapa
         call    far [cs:xh_ub-xh]
 .c:     jmp     far [cs:xh_old-xh]
+.d:     push    ds                      ; la INT 21h apunta a nosaltres
+        push    ax                      ;   (el resident que s'hi havia
+        xor     ax,ax                   ;   posat al davant ja no hi es)?
+        mov     ds,ax
+        cmp     word [84h],0
+        jne     .k
+        mov     ax,cs
+        cmp     [86h],ax
+        jne     .k
+        cli                             ; la tornem com era i el bloc
+        mov     ax,[cs:xh_old-xh]       ;   queda lliure
+        mov     [84h],ax
+        mov     ax,[cs:xh_old-xh+2]
+        mov     [86h],ax
+        mov     ax,cs
+        dec     ax
+        mov     ds,ax
+        mov     word [1],0
+        sti
+.k:     pop     ax
+        pop     ds
+        jmp     far [cs:xh_old-xh]
 xh_st   db      0
 xh_old  dd      0
 xh_ub   dd      0
@@ -1652,6 +1718,8 @@ name_child:
         jne     .n
         call    in_kids
         je      .n
+        mov     dx,cs                   ; (0.25) el TSR, fill del nostre pare
+        call    r_pare
         call    .put
 .n:     cmp     byte [es:0],'Z'
         je      .e
@@ -1880,7 +1948,7 @@ m_tros2 db      ': lliure $'
 m_low   db      'No hi cap a la zona alta: es carrega a la mem•ria convencional.',CR,LF,'$'
 m_xerr  db      'No s',27h,'ha pogut executar el programa.',CR,LF,'$'
 m_badfmt db     'El programa no t‚ un format v…lid (els .BAT no es poden carregar).',CR,LF,'$'
-m_help  db      'LOADHI 0.24 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
+m_help  db      'LOADHI 0.28 - carrega programes a la mem•ria superior (MS-DOS 3.x)',CR,LF
         db      CR,LF
         db      'LOADHI [@fitxer] [/H:ini[-fi]] [/F] [/B:n] [/FILES:n] [/C] [/R:n]',CR,LF
         db      '       [/RB:n] [/RC:n]',CR,LF
@@ -3151,6 +3219,8 @@ r_name: mov     si,R(r_path)
         pop     di
         pop     cx
         je      .n
+        mov     dx,[R(r_psp)]           ; (0.25) el TSR, fill del nostre pare
+        call    r_pare
         push    si
         push    di
         push    cx
@@ -3178,6 +3248,32 @@ r_name: mov     si,R(r_path)
         inc     ax
         loop    .l
 .e:     pop     es
+        ret
+
+; (0.25) AX = MCB d'un TSR fill nostre, DX = el nostre PSP: li posem
+; el nostre pare (PSP:16h) i les nostres adreces de sortida, Ctrl-C i
+; error cr¡tic (PSP:0Ah-15h). Quan el TSR es tregui ell mateix (4Ch),
+; el DOS tornar… a qui ens va engegar (COMMAND.COM), com si l'hagu‚s
+; carregat ell: abans tornava a LOADHI, que ja no hi era, i es penjava.
+r_pare: push    ds
+        push    es
+        push    si
+        push    di
+        push    cx
+        mov     di,ax
+        inc     di
+        mov     es,di
+        mov     ds,dx
+        mov     si,0Ah
+        mov     di,si
+        mov     cx,7
+        cld
+        rep     movsw
+        pop     cx
+        pop     di
+        pop     si
+        pop     es
+        pop     ds
         ret
 
 r_mlow  db      'No hi cap a la zona alta: es carrega a la mem•ria convencional.',CR,LF,'$'

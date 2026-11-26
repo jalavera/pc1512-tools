@@ -6,7 +6,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 
 | Programa | Versió | Què fa |
 |---|---|---|
-| [LOADHI](LOADHI/) | 0.24 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM; mentre corre un programa carregat a dalt, a la convencional només hi queden el seu PSP i l'entorn (uns 400 bytes) |
+| [LOADHI](LOADHI/) | 0.28 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM; mentre corre un programa carregat a dalt, a la convencional només hi queden el seu PSP i l'entorn (uns 400 bytes); els residents que es treuen ells mateixos (p. ex. PC Tools /R) tornen bé al COMMAND.COM |
 | [MEM](MEM/) | 0.30 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos; la part transitòria del COMMAND.COM, només on és de debò; cada sortida acaba amb la versió |
 | [GEMHI](GEMHI/) | 0.24 | Engega el GEM 2.0 triant amb /A: i /B: on va cada peça (GEMHI, GEMVDI, GEM.EXE, recursos, controladors i lletres, i el COMMAND.COM de la Shell de DOS), amb els accessoris a la memòria superior; dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
 | [GEMGO](GEMGO/) | 0.19 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; activa o desactiva accessoris; Intro les obre amb el GEM, i mentre el GEM corre només en queda un tros de 0,8 KB; F1, ajuda (abans APPHI) |
