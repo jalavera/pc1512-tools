@@ -95,8 +95,8 @@ g_mode          db 0
 g_rsh           db 0
 g_lsh           db 0
 g_bcol          dw 0
-andb            db 0,0,0
-xorb            db 0,0,0
+m_andb            db 0,0,0
+m_xorb            db 0,0,0
 gsave           times 48 db 0
 tbusy           db 0
 hbusy           db 0
@@ -623,12 +623,12 @@ gfx_apply:
         rcr     bh,1
         dec     cl
         jnz     .rsh
-.nor:   mov     [M(andb)],ah
-        mov     [M(andb)+1],al
-        mov     [M(andb)+2],bl
-        mov     [M(xorb)],dh
-        mov     [M(xorb)+1],dl
-        mov     [M(xorb)+2],bh
+.nor:   mov     [M(m_andb)],ah
+        mov     [M(m_andb)+1],al
+        mov     [M(m_andb)+2],bl
+        mov     [M(m_xorb)],dh
+        mov     [M(m_xorb)+1],dl
+        mov     [M(m_xorb)+2],bh
         pop     bx
         mov     dx,[M(g_bcol)]
         xor     si,si
@@ -637,8 +637,8 @@ gfx_apply:
         jae     .ds
         mov     al,[es:di]
         mov     [bx],al
-        and     al,[M(andb)+si]
-        xor     al,[M(xorb)+si]
+        and     al,[M(m_andb)+si]
+        xor     al,[M(m_xorb)+si]
         mov     [es:di],al
 .ds:    inc     bx
         inc     di
