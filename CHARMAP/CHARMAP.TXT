@@ -60,15 +60,6 @@ Trucs
 
 Historial
 ---------
-0.1  Entrada al men£ i finestra amb la graella de car…cters.
-0.2  Triar amb el ratol¡, l¡nia del codi, cadena i botons Afegeix,
-     Esborra i Envia. Nom‚s es redibuixa el que canvia.
-0.3  Finestra m‚s baixa (cabia just a la pantalla de 200 l¡nies).
-0.4  L'enviament es fa amb la reproducci¢ de tecles del GEM
-     (appl_tplay) en lloc de la cua de teclat de la BIOS, que el GEM
-     no recollia.
-0.5  Corregit: despr‚s d'Envia l'accessori es quedava bloquejat i no
-     es podia tornar a obrir.
 0.8  26-11-2026: colors com la resta d'EINES: fons groc i botons blaus
      amb el text en blanc, un punt m‚s amunt i a l'esquerra (centrat).
 0.7  20-11-2026: el doble clic no afegia res. Ara, un clic sobre el
@@ -77,4 +68,13 @@ Historial
 0.6  20-11-2026: amb la finestra al davant, les tecles s'afegeixen a
      la cadena (Retroc‚s esborra, Retorn envia, Esc tanca). La
      cap‡alera ja no demana tota la mem•ria al GEM.
+0.5  Corregit: despr‚s d'Envia l'accessori es quedava bloquejat i no
+     es podia tornar a obrir.
+0.4  L'enviament es fa amb la reproducci¢ de tecles del GEM
+     (appl_tplay) en lloc de la cua de teclat de la BIOS, que el GEM
+     no recollia.
+0.3  Finestra m‚s baixa (cabia just a la pantalla de 200 l¡nies).
+0.2  Triar amb el ratol¡, l¡nia del codi, cadena i botons Afegeix,
+     Esborra i Envia. Nom‚s es redibuixa el que canvia.
+0.1  Entrada al men£ i finestra amb la graella de car…cters.
 

@@ -6,7 +6,7 @@ QuŠ ‚s
 ------
 Un sol accessori d'escriptori del GEM amb quatre entrades al men£ dels
 accessoris (el de la dreta de la barra de men£s):
-   Car…cters      el mapa de car…cters (CHARMAP 0.7)
+   Car…cters      el mapa de car…cters (CHARMAP 0.8)
    Shell de DOS   obre el DOS en mode text; amb EXIT es torna al GEM
                   (abans DOSSHELL 0.2)
    Calculadora    calculadora amb 6 decimals, jerarquia i parŠntesis
@@ -190,14 +190,14 @@ Historial
                  CALCLOCK.ACC (28 KB). Les quatre finestres es poden
                  tenir obertes alhora. NO provat encara dins el GEM
                  real.
-0.1  20-11-2026  CHARMAP 0.5 i DOSSHELL 0.2 en un sol accessori, amb
-                 dues entrades al men£. La cap‡alera ja no demana tota
-                 la mem•ria.
 0.3  20-11-2026  Car…cters com CHARMAP 0.7: el doble clic (un clic
                  sobre el car…cter ja triat) afegeix a la cadena.
 0.2  20-11-2026  Car…cters com CHARMAP 0.6: el teclat afegeix a la
                  cadena (Retroc‚s, Retorn, Esc). NO provat encara dins
                  el GEM real.
+0.1  20-11-2026  CHARMAP 0.5 i DOSSHELL 0.2 en un sol accessori, amb
+                 dues entrades al men£. La cap‡alera ja no demana tota
+                 la mem•ria.
 
 Historial de CHARMAP
 0.1  Entrada al men£ i finestra amb la graella de car…cters.
@@ -209,6 +209,8 @@ Historial de CHARMAP
 0.5  Corregit: despr‚s d'Envia l'accessori es quedava bloquejat.
 0.6  Teclat: les tecles s'afegeixen a la cadena.
 0.7  Doble clic: un clic sobre el car…cter triat l'afegeix.
+0.8  Fons groc i botons blaus amb el text blanc i centrat (com la
+     resta d'EINES).
 
 Historial de DOSSHELL
 0.1  Primera versi¢ (el GEM no la carregava: fitxer de 13 KB que
