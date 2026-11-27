@@ -41,10 +41,11 @@ jobs:
             if ! cmp -s "$f" "$GITHUB_WORKSPACE/$f"; then
               cp "$f" "$GITHUB_WORKSPACE/$f"
               echo "compilat: $f"
+              echo "$f" >> "$RUNNER_TEMP/nous"
             fi
           done
           cd "$GITHUB_WORKSPACE"
-          git add -A -- '*.COM' '*.SYS' '*.ACC' '*.APP' '*.EXE'
+          [ -s "$RUNNER_TEMP/nous" ] && git add -- $(cat "$RUNNER_TEMP/nous")
           if git diff --cached --quiet; then
             echo "Res a compilar: tots els executables ja hi són."
             exit 0
