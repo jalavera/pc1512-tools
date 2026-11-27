@@ -5,6 +5,8 @@
 ;               carregar, treure i moure amb KEYBX ja resident
 ;               Versio 2.3: amb LOADHI, la taula i el ratoli tambe van a dalt
 ;               Versio 2.4: a baix, el nom al bloc de memoria (MEM)
+;               Versio 2.5: amb el DOS 5/6 (LH), la taula i el ratoli
+;               tambe troben els UMB encara que no estiguin enllacats
 ;
 ;  Muntatge:   nasm -f bin KEYBX.ASM -o KEYBX.COM
 ;
@@ -2757,6 +2759,7 @@ ovl:    push    dx
 ; Bloc lliure de la cadena per sobre de la memoria convencional -> AX
 find_umb:
         push    es
+        mov     byte [zdone],0
         mov     ah,52h
         int     21h
         mov     ax,[es:bx-2]
@@ -2795,11 +2798,25 @@ find_umb:
         pop     es
         clc
         ret
-.next:  cmp     cl,'Z'
-        je      .fail
-        add     ax,dx
+.next:  add     ax,dx
         inc     ax
-        jmp     short .walk
+        cmp     cl,'Z'
+        jne     .walk
+        ; (2.5) DOS 5/6 amb els UMB sense enllacar (LH els enllaca nomes
+        ; mentre carrega): la cadena de baix acaba en 'Z' pero continua
+        ; a la memoria superior
+        cmp     byte [zdone],0
+        jne     .fail
+        cmp     ax,[convtop]
+        jae     .fail
+        push    ax
+        mov     ah,30h
+        int     21h
+        cmp     al,5
+        pop     ax
+        jb      .fail
+        mov     byte [zdone],1
+        jmp     .walk
 .fail:  pop     es
         stc
         ret
@@ -3979,6 +3996,7 @@ mseg        dw  0
 mrawseg     dw  0
 corebase    dw  0
 convtop     dw  0
+zdone       db  0
 mname       db  'KEYBXM',0,0
 hexout      db  0,0,'$'
 rbuf        times 32 dw 0
@@ -4059,7 +4077,7 @@ cfghdr      db  `; KEYBX.CFG - generat amb KEYBX /A\r\n`
             db  `;        AGUT GREU CIRC DIER (tecles mortes), NUL\r\n`
 CFGHDRLEN   equ $-cfghdr
 
-m_banner    db  `KEYBX 2.4 - remapejador de teclat i ratol\xA1 per a DOS (8086)\r\n$`
+m_banner    db  `KEYBX 2.5 - remapejador de teclat i ratol\xA1 per a DOS (8086)\r\n$`
 m_help      db  `\r\n`
             db  `KEYBX [fitxer.cfg] [/437|/850|/GEM] [/P:xx] [/M[:n]] [/H:seg [/F]]\r\n`
             db  `KEYBX /A [fitxer.cfg]   aprenentatge: genera el .CFG\r\n`

@@ -1,9 +1,9 @@
 ; =====================================================================
 ;  HIDOS6.ASM - el nucli de l'MS-DOS 6.22 i el COMMAND.COM a la mem•ria
 ;               superior en un 8086 (Amstrad PC1512), sense HMA.
-;                                                         versi¢ 0.3
+;                                                         versi¢ 0.5
 ;
-;  Sintaxi:   HIDOS6 [unitat:] [/S|/S-] [/L|/L-] [/D[:seg]|/D-] [/U]
+;  Sintaxi:   HIDOS6 [unitat:] [/S|/S-] [/L|/L-] [/D[:seg]|/D-] [/E|/E-] [/U]
 ;               (res)       aplica el peda‡ a C:\IO.SYS, o diu l'estat
 ;               /S          l'intŠrpret (SHELL=) a dalt (per defecte)
 ;               /S-         l'intŠrpret a la mem•ria convencional
@@ -11,6 +11,9 @@
 ;               /L-         ... a dalt (per defecte)
 ;               /D[:seg]    les dades del DOS (5 KB) a dalt, a seg (BE00);
 ;                           cal UMBPC 1.3 (/D-: a baix, per defecte)
+;               /E          els UMB queden enlla‡ats a la cadena de blocs
+;                           despr‚s d'arrencar, com la zona de LOADHI al
+;                           3.20 (/E-: sense enlla‡ar, com el DOS; defecte)
 ;               /U          el desf…: l'IO.SYS torna a ser l'original
 ;
 ;  Cal UMBPC.SYS (o un altre XMS que doni UMB) i, al CONFIG.SYS,
@@ -36,6 +39,8 @@ IOPE    equ     105h
 IOPC    equ     1E9h                    ; INT 12h / MOV CL,6 de l'MSLOAD
 V1LEN   equ     464                     ; el que afegia HIDOS6 0.1
 V2LEN   equ     752                     ; ... i la 0.2
+V3LEN   equ     1120                    ; ... i la 0.3
+V4LEN   equ     1168                    ; ... i la 0.4
 
 e_      equ     8Ah
 ee      equ     82h
@@ -109,14 +114,22 @@ start:  cld
         jnz     us
         mov     [o_zone],ax
         jmp     .par
-.s0:    cmp     al,'L'
+.s0:    cmp     al,'E'
+        jne     .s1
+        mov     byte [o_e],1            ; /E
+        cmp     byte [si],'-'
+        jne     .e1
+        inc     si
+        mov     byte [o_e],2            ; /E-
+.e1:    jmp     .par
+.s1:    cmp     al,'L'
         jne     .s2
         mov     byte [o_l],1            ; /L
         cmp     byte [si],'-'
         jne     .par
         inc     si
         mov     byte [o_l],2            ; /L-
-        jmp     short .par
+        jmp     .par
 .s2:    cmp     al,'S'
         jne     us
         mov     byte [o_s],1            ; /S
@@ -140,6 +153,7 @@ start:  cld
         mov     al,[o_s]
         or      al,[o_l]
         or      al,[o_d]
+        or      al,[o_e]
         jnz     us
 
 ; ---- llegeix l'IO.SYS --------------------------------------------------
@@ -219,6 +233,12 @@ start:  cld
         je      .sg
         add     cx,V2LEN-V1LEN          ; o el de la 0.2
         cmp     ax,cx
+        je      .sg
+        add     cx,V3LEN-V2LEN          ; o el de la 0.3
+        cmp     ax,cx
+        je      .sg
+        add     cx,V4LEN-V3LEN          ; o el de la 0.4
+        cmp     ax,cx
         jne     .nx
 .sg:
         mov     si,[bp+T.s]             ; signatura al final
@@ -278,8 +298,14 @@ start:  cld
         jne     .ap6
         or      al,4
 .ap6:   cmp     byte [o_d],2
-        jne     .ap2
+        jne     .ap8
         and     al,0FBh
+.ap8:   cmp     byte [o_e],1
+        jne     .ap9
+        or      al,8
+.ap9:   cmp     byte [o_e],2
+        jne     .ap2
+        and     al,0F7h
 .ap2:   mov     [nflags],al
         mov     ax,[pzone]
         cmp     word [o_zone],0
@@ -490,7 +516,12 @@ status: mov     dx,m_st1
         mov     di,m_dseg
         call    hex4
         mov     dx,m_dhi
-.d:     jmp     print
+.d:     call    print
+        mov     dx,m_eno
+        test    byte [nflags],8
+        jz      .e
+        mov     dx,m_esi
+.e:     jmp     print
 
 ; ---- hexnum: n£mero hexadecimal de DS:SI a AX (CF=1 si cap xifra) --------
 hexnum: xor     dx,dx
@@ -657,7 +688,7 @@ k_es:   incbin  'K_ES.BIN'
 K_ES_LEN equ    $-k_es
 k_en:   incbin  'K_EN.BIN'
 K_EN_LEN equ    $-k_en
-FVER    equ     3                       ; versi¢ del format (byte 7 del blob)
+FVER    equ     5                       ; versi¢ del format (byte 7 del blob)
 
 ; ---- dades ---------------------------------------------------------------
 fname   db      'C:\IO.SYS',0
@@ -666,6 +697,7 @@ o_u     db      0
 o_s     db      0
 o_l     db      0
 o_d     db      0
+o_e     db      0
 o_zone  dw      0
 pzone   dw      0BE00h
 nzone   dw      0
@@ -681,14 +713,16 @@ okmsg   dw      0
 
 n_es    db      'MS-DOS 6.22 castell',a_,'$'
 n_en    db      'MS-DOS 6.22 angl',e_,'s$'
-m_banner db     'HIDOS6 0.3 - el nucli de l',39,'MS-DOS 6.22 i el COMMAND.COM a la mem',oo,'ria superior',13,10,'$'
-m_us    db      'Sintaxi: HIDOS6 [unitat:] [/S|/S-] [/L|/L-] [/D[:seg]|/D-] [/U]',13,10
+m_banner db     'HIDOS6 0.5 - el nucli de l',39,'MS-DOS 6.22 i el COMMAND.COM a la mem',oo,'ria superior',13,10,'$'
+m_us    db      'Sintaxi: HIDOS6 [unitat:] [/S|/S-] [/L|/L-] [/D[:seg]|/D-] [/E|/E-] [/U]',13,10
         db      '  /S   l',39,'int',e_,'rpret (SHELL=) a la mem',oo,'ria superior (per defecte)',13,10
         db      '  /S-  l',39,'int',e_,'rpret a la mem',oo,'ria convencional',13,10
         db      '  /L   FILES, FCBS, BUFFERS i LASTDRIVE a la mem',oo,'ria convencional',13,10
         db      '  /L-  ... a la mem',oo,'ria superior (per defecte)',13,10
         db      '  /D   les dades del DOS (5 KB) a dalt, a BE00 (/D:seg: a seg); cal UMBPC 1.3',13,10
         db      '  /D-  les dades del DOS a la mem',oo,'ria convencional (per defecte)',13,10
+        db      '  /E   els UMB, sempre enlla',87h,'ats a la cadena de blocs (com LOADHI al 3.20)',13,10
+        db      '  /E-  els UMB, sense enlla',87h,'ar despr',82h,'s d',39,'arrencar (per defecte)',13,10
         db      '  /U   desf',a_,' el peda',c_,' (torna a l',39,'IO.SYS original)',13,10
         db      'Cal UMBPC.SYS i DOS=HIGH,UMB al CONFIG.SYS.',13,10,'$'
 m_nofile db     'No trobo (o no puc llegir) \IO.SYS en aquesta unitat.',13,10,'$'
@@ -713,6 +747,8 @@ m_tbhi  db      '  FILES, FCBS, BUFFERS, LASTDRIVE: a la mem',oo,'ria superior (
 m_dhi   db      '  Dades del DOS: a la mem',oo,'ria superior, a '
 m_dseg  db      '0000 (/D; cal UMBPC 1.3)',13,10,'$'
 m_dlo   db      '  Dades del DOS: a la mem',oo,'ria convencional (/D-)',13,10,'$'
+m_esi   db      '  UMB: sempre enlla',87h,'ats a la cadena de blocs (/E)',13,10,'$'
+m_eno   db      '  UMB: sense enlla',87h,'ar, com el DOS (/E-)',13,10,'$'
 m_tblo  db      '  FILES, FCBS, BUFFERS, LASTDRIVE: a la mem',oo,'ria convencional (/L)',13,10,'$'
 
 savz    times IOPE-IOPB db 0

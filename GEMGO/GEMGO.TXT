@@ -1,4 +1,4 @@
-GEMGO 0.19 - On carrega GEMHI les aplicacions i accessoris GEM (PC1512)
+GEMGO 0.20 - On carrega GEMHI les aplicacions i accessoris GEM (PC1512)
 =====================================================================
 
 Quä fa
@@ -173,6 +173,8 @@ GEMGO.TXT   aquest fitxer
 
 Historial
 ---------
+0.20 27-11-2026  MS-DOS 5 i 6: per posar el COMMAND.COM del GEM.BAT a la
+                 memïria superior, enllaáa un moment els UMB (5803h).
 0.19 26-11-2026  GEMGO.$$$ es crea a la carpeta de GEMGO.COM (abans, a
                  l'arrel de la unitat on cerca) i ocult; en arrencar,
                  GEMGO esborra el que hagi quedat d'una vegada que no va

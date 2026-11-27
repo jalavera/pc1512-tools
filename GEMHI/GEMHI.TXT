@@ -1,4 +1,4 @@
-GEMHI 0.24 - El GEM amb la seva mem•ria a la zona alta (PC1512)
+GEMHI 0.26 - El GEM amb la seva mem•ria a la zona alta (PC1512)
 ==============================================================
 
 QuŠ fa
@@ -115,6 +115,8 @@ Cal
 ---
 - La zona alta de LOADHI (LOADHI /H al CONFIG.SYS) amb lloc lliure:
   uns 120 KB per al GEM, i m‚s si vols que hi vagin les aplicacions.
+  Amb el MS-DOS 5 o 6 (0.25), en lloc de LOADHI, un controlador de UMB
+  (UMBPC.SYS) i DOS=UMB (o DOS=HIGH,UMB amb HIDOS6) al CONFIG.SYS.
 - MS-DOS 3.20 o posterior.
 
 Instalúlaci¢
@@ -163,6 +165,16 @@ Despr‚s, cada aplicaci¢ que obris mostra dues alertes del GEM:
    quants KB han anat a dalt i a baix, i si ha demanat fer cr‚ixer el
    bloc del programa o un de dades.
 Les aplicacions que no criden el GEM (programes de DOS) no en mostren.
+Excepci¢: si has posat la C a dalt (/A:...C) i el COMMAND.COM de la
+Shell de DOS no hi cap, GEMHI ho diu a la pantalla de text abans
+d'engegar-lo a baix:
+   GEMHI: COMMAND.COM a la convencional: a dalt no hi cap.
+   Per carregar-lo calen 56K seguits a la mem•ria alta i el bloc
+   lliure m‚s gran en fa 53K. (/D)
+El DOS carrega el COMMAND.COM sencer en un sol bloc (el del 6.22 fa
+55 KB i en demana uns 56, el del 3.20 uns 25), encara que despr‚s
+nom‚s en deixi uns quants KB. Si no hi cap, nom‚s es perd la
+mem•ria del COMMAND (3-4 KB) mentre ets a la Shell de DOS.
 Per tornar al mode normal, treu el /D.
 
 Si alguna cosa va malament
@@ -199,6 +211,14 @@ GEMHI.TXT   aquest fitxer
 
 Historial
 ---------
+0.26 27-11-2026  /D: si el COMMAND.COM (C a dalt) no hi cap a la
+                 mem•ria alta, ho diu a la pantalla de text: quants KB
+                 seguits calen i quants en fa el bloc lliure m‚s gran.
+                 Amb MS-DOS 3.20 i 6.22.
+0.25 27-11-2026  MS-DOS 5 i 6 (6.22 amb UMBPC i DOS=UMB, o HIDOS6): la
+                 mem•ria superior no est… enlla‡ada a la cadena de blocs
+                 si no es fa LH; GEMHI l'enlla‡a (5803h) mentre corre el
+                 GEM i, quan acaba, la deixa com estava.
 0.24 26-11-2026  C a dalt: la part transit•ria del COMMAND.COM ja no
                  queda a dalt (en un tros que el DOS t‚ per lliure i que
                  el que s'hi carregu‚s trepitjaria), sin¢ al capdamunt de

@@ -14,10 +14,11 @@
         org     SZ
 
 sig     db      'HIDOS6',0              ; +0  signatura
-ver     db      3                       ; +7  versi¢ del format
+ver     db      5                       ; +7  versi¢ del format
 flags   db      0                       ; +8  bit 0: intŠrpret a baix (/S-)
                                         ;     bit 1: taules a baix (/L)
                                         ;     bit 2: dades del DOS a dalt (/D)
+                                        ;     bit 3: UMB sempre enlla‡ats (/E)
         db      0                       ; +9
 d_zone  dw      0BE00h                  ; +0Ah on van les dades del DOS (/D:)
         db      0,0,0,0                 ; reservat
@@ -275,7 +276,18 @@ l_lnk   db      0
 ; Es crida en lloc de "mov ax,4B00h / stc / int 21h", amb DS:DX i ES:BX a
 ; punt per a l'EXEC.
 shell:  test    byte [cs:flags],1
-        jnz     .exec
+        jz      .hi
+        test    byte [cs:flags],8       ; /S- /E: els UMB, enlla‡ats des d'ara
+        jz      .exec
+        push    ax
+        push    bx
+        mov     ax,5803h
+        mov     bx,1
+        int     21h
+        pop     bx
+        pop     ax
+        jmp     .exec
+.hi:
         push    ax
         push    bx
         push    cx
@@ -291,6 +303,36 @@ shell:  test    byte [cs:flags],1
         mov     ax,5801h                ; nom‚s a dalt
         mov     bx,40h
         int     21h
+        mov     ax,3D00h                ; (0.5) hi cap? El DOS el carrega
+        int     21h                     ;   sencer en un bloc: la mida del
+        jc      .lo                     ;   fitxer, en par…grafs
+        mov     bx,ax
+        mov     ax,4202h
+        xor     cx,cx
+        xor     dx,dx
+        int     21h
+        push    ax
+        push    dx
+        mov     ah,3Eh
+        int     21h
+        pop     dx
+        pop     ax
+        cmp     dx,10h
+        jae     .lo
+        add     ax,15
+        adc     dx,0
+        mov     cl,4
+        shr     ax,cl
+        mov     cl,12
+        shl     dx,cl
+        or      ax,dx
+        add     ax,10h+(HKLEN+15)/16+40h ; PSP, ganxo, MCB i entorn
+        mov     si,ax
+        mov     ah,48h                  ; el bloc lliure m‚s gran de dalt
+        mov     bx,0FFFFh
+        int     21h
+        cmp     bx,si
+        jb      .lo                     ; no hi cap: a baix
         mov     ah,48h                  ; bloc per al ganxo
         mov     bx,(HKLEN+15)/16
         int     21h
@@ -310,6 +352,11 @@ shell:  test    byte [cs:flags],1
         mov     cx,HKLEN
         cld
         rep     movsb
+        mov     al,[cs:flags]           ; /E: en acabar, els UMB enlla‡ats
+        mov     cl,3
+        shr     al,cl
+        and     al,1
+        mov     [es:hk_lnk-hk],al
         xor     ax,ax
         mov     ds,ax
         cli
@@ -360,7 +407,8 @@ hk:     cmp     ah,58h
         pushf
         call    far [cs:hk_old-hk]
         mov     ax,5803h
-        xor     bx,bx
+        mov     bl,[cs:hk_lnk-hk]       ; 0, o 1 amb /E
+        xor     bh,bh
         pushf
         call    far [cs:hk_old-hk]
         xor     ax,ax
@@ -388,6 +436,7 @@ hk:     cmp     ah,58h
 .c:     jmp     far [cs:hk_old-hk]
 hk_old  dd      0
 hk_st   db      2
+hk_lnk  db      0
 HKLEN   equ     $-hk
 
 m_hi    db      'HIDOS6: MS-DOS a la mem',0A2h,'ria superior.',13,10,'$'

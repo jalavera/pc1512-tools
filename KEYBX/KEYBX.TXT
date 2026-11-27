@@ -1,4 +1,4 @@
-KEYBX 2.4 - Remapejador de teclat resident per a MS-DOS 2.x - 6.xx
+KEYBX 2.5 - Remapejador de teclat resident per a MS-DOS 2.x - 6.xx
           amb driver de ratol¡ per a l'Amstrad PC1512 (/M)
 ===================================================================
 
@@ -356,6 +356,11 @@ Detalls tŠcnics
 
 Historial
 ---------
+2.5  27-11-2026  MS-DOS 5/6 amb KEYBX carregat amb LH: KEYBX /P i /M
+                 deien que no hi havia mem•ria per al m•dul. Els UMB no
+                 estan enlla‡ats a la cadena de blocs (LH els enlla‡a
+                 nom‚s mentre carrega) i KEYBX no els trobava; ara
+                 segueix la cadena tamb‚ per la mem•ria superior.
 2.4  23-11-2026  Carregat a la mem•ria convencional, MEM mostrava el
                  proc‚s com a ?01DD (KEYBX allibera l'entorn, on hi ha
                  el nom). Ara posa "KEYBX" al seu bloc de mem•ria (com

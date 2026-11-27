@@ -11,7 +11,9 @@
 ;              arrencar s'esborra el que hagi quedat.
 ;              programa i dades, a la memoria alta o a la convencional;
 ;              i cada accessori (.ACC, nomes el programa: GEMHI 0.7).
-;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.19
+;              0.20: MS-DOS 5 i 6: per posar el COMMAND.COM a dalt,
+;              enllaca un moment els UMB (5803h).
+;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.20
 ;  Intro (0.9): obre l'aplicacio triada amb X:\GEM.BAT ruta (COMMAND /C),
 ;  i en tornar en rellegeix les mesures.
 ;
@@ -1866,6 +1868,7 @@ tros:   mov     bx, [S(st_par0)]        ; nomes el tros
         mov     ax, 4BFFh               ; (0.18) si ens ha engegat LOADHI, te
         int     21h                     ;   la convencional tapada fins al
                                         ;   primer EXEC: un EXEC buit la destapa
+        call    enllaca                 ; (0.20) DOS 5+: els UMB, enllacats
         call    tapa                    ; (0.17) el COMMAND.COM que obre
         mov     dx, S(st_com)           ;   el GEM.BAT, a la memoria alta
         mov     bx, S(st_pb)            ;   si hi cap: la convencional
@@ -1873,6 +1876,7 @@ tros:   mov     bx, [S(st_par0)]        ; nomes el tros
         int     21h                     ;   nosaltres
         pushf
         call    destapa
+        call    desenl
         popf
         jc      .baix
         mov     ah, 51h                 ; el PSP del COMMAND
@@ -1967,6 +1971,33 @@ tros:   mov     bx, [S(st_par0)]        ; nomes el tros
 st_pb   dw      0, 80h, 0, 6Ch, 0, 6Ch, 0
         dw      0, 0, 0, 0              ; (0.17) 4B01h: SS:SP i CS:IP
 st_bl   times   9 dw 0                  ; blocs tapats
+st_lnk  db      0FFh                    ; (0.20) enllac dels UMB d'abans
+; (0.20) DOS 5+: enllaca els UMB (i desa com estava); desenl ho desfa
+enllaca:
+        mov     ah, 30h
+        int     21h
+        cmp     al, 5
+        jb      .r
+        mov     ax, 5802h
+        int     21h
+        jc      .r
+        mov     [cs:S(st_lnk)], al
+        mov     ax, 5803h
+        mov     bx, 1
+        int     21h
+.r:     ret
+desenl: cmp     byte [cs:S(st_lnk)], 0FFh
+        je      .r
+        push    ax
+        push    bx
+        mov     ax, 5803h
+        mov     bl, [cs:S(st_lnk)]
+        xor     bh, bh
+        int     21h
+        mov     byte [cs:S(st_lnk)], 0FFh
+        pop     bx
+        pop     ax
+.r:     ret
 ; (0.17) tapa (a nom nostre) els blocs lliures de la convencional, i
 ; destapa: els torna a deixar lliures
 tapa:   push    es
@@ -2148,7 +2179,7 @@ neteja: mov     ax, 0600h
 ; ---------------------------------------------------------------------
 ;  Textos (CP850)
 ; ---------------------------------------------------------------------
-t_tit   db      ' GEMGO 0.19 - On carrega GEMHI (0.24) les aplicacions i els accessoris del GEM', 0
+t_tit   db      ' GEMGO 0.20 - On carrega GEMHI (0.25) les aplicacions i els accessoris del GEM', 0
 t_cerc  db      ' Cercant les aplicacions (.APP) i els accessoris (.ACC)...', 0
 t_cap1  db      ' Nom          Carpeta                         Prog Dades  Bl Crx  Tria P Tria D', 0
 t_cap0  db      ' No hi ha cap aplicaci¢ (.APP) ni accessori (.ACC) en aquesta unitat. Prem una tecla.', 0
@@ -2213,7 +2244,7 @@ t_noll2 db      " No s'ha pogut llegir el fitxer.", 0
 t_nomar db      ' Amb GEMHI: com sense marca (a dalt si hi cap; dades a baix).', 0
 t_noesc db      " No s'ha pogut escriure (fitxer nom‚s de lectura?).", 0
 t_tot   db      '\*.*', 0
-t_us    db      'GEMGO 0.19 - On carrega GEMHI les aplicacions i accessoris GEM', 13, 10
+t_us    db      'GEMGO 0.20 - On carrega GEMHI les aplicacions i accessoris GEM', 13, 10
         db      'és: GEMGO [unitat:]      (per defecte C:)', 13, 10, '$'
 
 ; ---------------------------------------------------------------------

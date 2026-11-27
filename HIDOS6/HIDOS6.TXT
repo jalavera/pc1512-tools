@@ -1,4 +1,4 @@
-HIDOS6 per a MS-DOS 6.22                                     versi¢ 0.3
+HIDOS6 per a MS-DOS 6.22                                     versi¢ 0.5
 
 QuŠ ‚s
 ------
@@ -53,7 +53,7 @@ Contingut del disquet
 HIDOS6.COM   el programa
 HIDOS6.TXT   aquest fitxer
 HIDOS6.ASM   el codi font del programa
-HIDOS6K.ASM  el codi font del que s'afegeix a l'IO.SYS (1.120 bytes)
+HIDOS6K.ASM  el codi font del que s'afegeix a l'IO.SYS (1.168 bytes)
 BUILD.SH     com s'assemblen (sh BUILD.SH): HIDOS6K.ASM, un cop per a
              cada IO.SYS (castell… i anglŠs), i despr‚s HIDOS6.ASM
 UMBPC.SYS    el controlador de mem•ria superior (1.3)
@@ -66,8 +66,9 @@ Instalúlaci¢
 2. Si vols IOPATCH6, posa'l abans (vegeu "Compte").
 3. Copia UMBPC.SYS sobre el d'abans (C:\DOS\UMBPC.SYS).
 4. Copia HIDOS6.COM al disc dur (p. ex. C:\UTILS) i executa:
-     HIDOS6 /D
-   (o HIDOS6 sense /D, per deixar les dades del DOS a baix). Diu quin
+     HIDOS6 /D /E
+   (o HIDOS6 sense /D, per deixar les dades del DOS a baix; /E, vegeu
+   "Els UMB enlla‡ats"). Diu quin
    IO.SYS ha trobat i on aniran l'intŠrpret, les taules i les dades. Si
    hi havia la 0.1 o la 0.2, l'actualitza i en conserva les opcions.
    La zona de /D (BE00) ha de ser el principi de la zona d'UMBPC
@@ -101,7 +102,9 @@ Instalúlaci¢
   HIDOS6 A:         a A:\IO.SYS
   HIDOS6 /S-        l'intŠrpret (SHELL=, el COMMAND.COM) a la mem•ria
                     convencional; la resta, a dalt
-  HIDOS6 /S         l'intŠrpret a la mem•ria superior (per defecte)
+  HIDOS6 /S         l'intŠrpret a la mem•ria superior (per defecte);
+                    si no hi cap (el COMMAND.COM 6.22 demana uns 56 KB
+                    seguits), va a la convencional
   HIDOS6 /L         FILES, FCBS, BUFFERS, LASTDRIVE i STACKS a la
                     mem•ria convencional (com sense HIDOS6)
   HIDOS6 /L-        ... a la mem•ria superior (per defecte)
@@ -109,10 +112,32 @@ Instalúlaci¢
                     principi de la zona: BE00 (cal UMBPC 1.3)
   HIDOS6 /D:C000    ... a C000 (segment m£ltiple de 80h, de A000 amunt)
   HIDOS6 /D-        les dades del nucli a la convencional (per defecte)
+  HIDOS6 /E         els UMB queden enlla‡ats a la cadena de blocs del DOS
+                    despr‚s d'arrencar (com la zona de LOADHI al 3.20)
+  HIDOS6 /E-        sense enlla‡ar, com fa el DOS (per defecte)
   HIDOS6 /U         el desf…: l'IO.SYS torna a ser l'original (si hi
                     havia l'IOPATCH6, el conserva)
-Si el peda‡ ja hi ‚s, /S, /S-, /L, /L-, /D i /D- nom‚s canvien
-l'opci¢. Cal reiniciar. Es poden combinar: HIDOS6 /D /S- /L.
+Si el peda‡ ja hi ‚s, /S, /S-, /L, /L-, /D, /D-, /E i /E- nom‚s
+canvien l'opci¢. Cal reiniciar. Es poden combinar: HIDOS6 /D /E /S-.
+
+Els UMB enlla‡ats: /E
+---------------------
+L'MS-DOS 6.22 t‚ la mem•ria superior fora de la cadena de blocs de
+mem•ria: nom‚s l'hi enlla‡a un moment, mentre LH o DEVICEHIGH carreguen
+un programa. Els programes que busquen la mem•ria superior seguint la
+cadena (com feien al 3.20 amb la zona de LOADHI, que sempre hi ‚s
+enlla‡ada) no la troben: p. ex. KEYBX 2.4 en fer KEYBX /P o /M despr‚s
+d'un LH KEYBX ("no hi ha mem•ria per al m•dul"), o GEMHI 0.24.
+Amb HIDOS6 /E, quan l'intŠrpret executa el primer programa la mem•ria
+superior queda enlla‡ada per sempre, com al 3.20 amb LOADHI. Els
+programes continuen anant a la convencional (el DOS els dona el bloc
+m‚s gran, i el busca primer a baix); LH i DEVICEHIGH funcionen igual.
+A l'emulador: KEYBX 2.4 amb LH i despr‚s /P i /M, tot a dalt, i el
+programa m‚s extens igual (732 KB). KEYBX 2.5 i GEMHI 0.25 ja enllacen
+ells mateixos, amb /E o sense.
+Algun programa antic que recorri la cadena fins al final per saber
+quanta mem•ria hi ha podria veure-hi tamb‚ la superior: si en trobes
+cap que no vagi b‚, HIDOS6 /E-.
 ERRORLEVEL: 0 correcte (o no calia fer res), 1 no troba l'IO.SYS o
 sintaxi incorrecta, 2 no el reconeix (no ha tocat res), 3 error en
 escriure.
@@ -195,6 +220,15 @@ Compte
 
 Historial
 ---------
+0.5  27-11-2026  /S: si a la mem•ria superior no hi ha cap bloc lliure
+                 prou gran per al COMMAND.COM (la mida del fitxer, uns
+                 56 KB), el posa a la convencional en lloc d'aturar
+                 l'arrencada amb "Incorrecto o falta int‚rprete de
+                 comandos". Actualitza un IO.SYS de la 0.1 a la 0.4.
+0.4  27-11-2026  /E: els UMB queden enlla‡ats a la cadena de blocs del
+                 DOS despr‚s d'arrencar, com la zona de LOADHI al 3.20
+                 (els programes fets per a LOADHI hi troben la mem•ria
+                 superior). Actualitza un IO.SYS de la 0.1, 0.2 o 0.3.
 0.3  27-11-2026  /D: les dades del nucli (5 KB) tamb‚ a la mem•ria
                  superior, al principi de la zona (cal UMBPC 1.3, que se
                  les salta); /D-: a baix (per defecte). A baix en queden

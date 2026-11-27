@@ -1,7 +1,7 @@
 ; =====================================================================
 ;  GEMHI.ASM - Engega el GEM i li posa a la memoria alta el que carrega
 ;              en arrencar (AMSTRAD.SYS, accessoris, GEM.RSC...)
-;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.24
+;              MS-DOS 3.20 o posterior, Amstrad PC1512.   Versio 0.26
 ;
 ;  Muntatge:   nasm -f bin GEMHI.ASM -o GEMHI.COM
 ;  Us:         GEMHI [/D] /A:lletres /B:lletres programa [parametres]
@@ -76,6 +76,12 @@
 ;  d'un accessori o un .BAT de l'escriptori): amb /A:...C, a dalt com
 ;  una aplicacio (app_exec). Ara son sis lletres.
 ;  0.23: l'alerta de /D, amb dues peces per linia, tambe diu la C.
+;  0.25: MS-DOS 5 i 6: la memoria superior (UMB) no esta enllacada a la
+;  cadena de blocs si no es fa LH; GEMHI l'enllaca (5803h) mentre corre
+;  el GEM i, quan acaba, la deixa com estava.
+;  0.26: amb /D, si el COMMAND.COM
+;  (C) no hi cap a dalt, ho diu a la pantalla de text: quant en cal
+;  (la mida del fitxer: el DOS el carrega sencer) i quant n'hi ha.
 ;  0.24: COMMAND.COM a dalt deixa la part transitoria a la
 ;  convencional (cmdtop), no al tros lliure de dalt.
 ; =====================================================================
@@ -93,6 +99,7 @@ start:  jmp     inici
 ;  Part resident (mentre dura el programa): el ganxo de l'INT 21h
 ; ---------------------------------------------------------------------
 old21   dd      0
+lnk_sav db      0FFh            ; (0.25) DOS 5+: l'enllac dels UMB d'abans (FF: res)
 fase    db      0               ; 1: arrencada del GEM (a dalt)
 nexec   db      0               ; EXEC vistos des d'engegar el programa
 firstmcb dw     0
@@ -479,6 +486,7 @@ int21:  cmp     ah, 48h
         int     21h
         push    cs
         pop     ds
+        call    desenllaca              ; (0.25)
         push    si
         push    cx
         call    informe
@@ -634,6 +642,8 @@ app_exec:
         jmp     far [cs:apb+12h]
 .baix:  mov     byte [cs:dbg_why], 4    ; (0.16) /D: no hi cabia
         mov     byte [cs:exg], 0
+        mov     al, [cs:ecmd]           ; (0.26) era el COMMAND.COM?
+        mov     [cs:cmdlo], al
         mov     byte [cs:ecmd], 0
         pop     es                      ; no hi cap a dalt: EXEC normal
         pop     ds
@@ -644,6 +654,7 @@ app_exec:
         pop     cx
         pop     bx
         pop     ax
+        call    avis_cmd                ; (0.26) /D: el COMMAND.COM, a baix
         cli
         mov     ss, [cs:gem_ss]
         mov     sp, [cs:gem_sp]
@@ -1470,6 +1481,7 @@ fi_prog:
         mov     ax, 2521h
         int     21h
         pop     ds
+        call    desenllaca              ; (0.25)
         popf
         jnc     .ret
         mov     dx, t_noexec
@@ -1601,6 +1613,83 @@ dcpy:   lodsb
         stosb
         jmp     dcpy
 .x:     ret
+
+; (0.26) /D: el COMMAND.COM (C a dalt) no hi cabia i va a baix: ho diu a
+; la pantalla (en text: el GEM ja l'hi ha deixat per a la Shell de DOS).
+; DS:DX = el programa. No canvia cap registre.
+avis_cmd:
+        cmp     byte [cs:cmdlo], 0
+        je      .r
+        mov     byte [cs:cmdlo], 0
+        cmp     byte [cs:dbg], 0
+        je      .r
+        push    ax
+        push    bx
+        push    cx
+        push    dx
+        push    si
+        push    di
+        push    ds
+        push    es
+        mov     ax, 3D00h               ; la mida del fitxer: el DOS el
+        pushf                           ;   carrega sencer en un bloc
+        call    far [cs:old21]
+        jc      .nf
+        mov     bx, ax
+        mov     ax, 4202h
+        xor     cx, cx
+        xor     dx, dx
+        pushf
+        call    far [cs:old21]
+        push    ax
+        push    dx
+        mov     ah, 3Eh
+        pushf
+        call    far [cs:old21]
+        pop     dx
+        pop     ax
+        add     ax, 256+1023            ; amb el PSP, en KB
+        adc     dx, 0
+        mov     cx, 1024
+        cmp     dx, cx
+        jae     .nf
+        div     cx
+        jmp     short .w
+.nf:    xor     ax, ax
+.w:     push    cs
+        pop     es
+        push    cs
+        pop     ds
+        cld
+        mov     di, dtext
+        mov     si, d_cm1
+        push    ax
+        call    dcpy
+        pop     ax
+        call    ddec
+        mov     si, d_cm2
+        call    dcpy
+        mov     ax, [dbg_max]
+        mov     cl, 6                   ; KB sencers (per sota)
+        shr     ax, cl
+        call    ddec
+        mov     si, d_cm3
+        call    dcpy
+        mov     al, '$'
+        stosb
+        mov     dx, dtext
+        mov     ah, 9
+        pushf
+        call    far [cs:old21]
+        pop     es
+        pop     ds
+        pop     di
+        pop     si
+        pop     dx
+        pop     cx
+        pop     bx
+        pop     ax
+.r:     ret
 
 ; AX -> decimal a ES:DI
 ddec:   push    bx
@@ -1910,6 +1999,7 @@ compta: push    ax
         ret
 
 dbg     db      0               ; /D
+cmdlo   db      0               ; (0.26) el COMMAND.COM no hi cabia a dalt
 dbg_pend db     0               ; 1: l'aplicacio encara no ha fet appl_init/exit
 dbg_why db      0               ; motiu (d_why)
 dmark   times 4 db 0            ; la marca (normalitzada a 'GH' p d)
@@ -1950,6 +2040,11 @@ d_alt   db      'a dalt (', 0
 d_baix  db      'a baix (', 0
 d_mot   db      '|Motiu: ', 0
 d_cal   db      'cal ', 0
+d_cm1   db      13, 10, 'GEMHI: COMMAND.COM a la convencional: a dalt no hi cap.', 13, 10
+        db      'Per carregar-lo calen ', 0
+d_cm2   db      'K seguits a la mem', 95h, 'ria alta i el bloc lliure', 13, 10
+        db      'm', 82h, 's gran en fa ', 0
+d_cm3   db      'K. (/D)', 13, 10, 13, 10, 0
 d_hiha  db      'K, a dalt ', 0
 d_dad   db      '|Dades: ', 0
 d_dlo   db      'a baix', 0
@@ -2075,8 +2170,24 @@ pdec32: push    bx
 
 error:  mov     ah, 9
         int     21h
+        call    desenllaca              ; (0.25)
         mov     ax, 4C01h
         int     21h
+
+; (0.25) DOS 5+: torna a deixar l'enllac dels UMB com era abans de GEMHI
+desenllaca:
+        cmp     byte [cs:lnk_sav], 0FFh
+        je      .r
+        push    ax
+        push    bx
+        mov     ax, 5803h
+        mov     bl, [cs:lnk_sav]
+        xor     bh, bh
+        int     21h
+        mov     byte [cs:lnk_sav], 0FFh
+        pop     bx
+        pop     ax
+.r:     ret
 
 t_noexec db     'GEMHI: no s', 27h, 'ha pogut executar el programa.', 13, 10, '$'
 t_inf1  db      13, 10, 'GEMHI: $'
@@ -2248,7 +2359,20 @@ inici:  cld
         mov     [logpath], al           ;   de la unitat del GEM...
         call    rutalog                 ; ...pero millor al costat de GEMHI.COM
 
-        mov     ah, 52h                 ; cadena de blocs i convencional
+        mov     ah, 30h                 ; (0.25) DOS 5+: enllaca els UMB a la
+        int     21h                     ;   cadena mentre corre el GEM
+        cmp     al, 5
+        jb      .d3
+        mov     ax, 5802h
+        int     21h
+        jc      .d3
+        mov     [lnk_sav], al
+        mov     ax, 5803h
+        mov     bx, 1
+        int     21h
+        jnc     .d3
+        mov     byte [lnk_sav], 0FFh    ; (no hi ha UMB)
+.d3:    mov     ah, 52h                 ; cadena de blocs i convencional
         int     21h
         mov     ax, [es:bx-2]
         mov     [firstmcb], ax
@@ -2469,8 +2593,8 @@ existeix:
 
 e_exe   db      '.EXE', 0
 e_com   db      '.COM', 0
-t_us    db      'GEMHI 0.24 - Engega el GEM amb les seves peces a la mem', 95h, 'ria alta o', 13, 10
-        db      'a la convencional (zona alta enlla', 87h, 'ada: LOADHI /H).', 13, 10, 13, 10
+t_us    db      'GEMHI 0.26 - Engega el GEM amb les seves peces a la mem', 95h, 'ria alta o', 13, 10
+        db      'a la convencional (zona alta: LOADHI /H, o al DOS 5/6, UMB i DOS=UMB).', 13, 10, 13, 10
         db      0E9h, 's:  GEMHI [/D] /A:lletres /B:lletres programa [par', 85h, 'metres]', 13, 10
         db      '     /A: a la mem', 95h, 'ria alta      /B: a la baixa (convencional)', 13, 10
         db      '     H  GEMHI mateix (el que queda a la mem', 95h, 'ria, uns 6,7 KB)', 13, 10
