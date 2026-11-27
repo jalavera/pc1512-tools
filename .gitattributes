@@ -4,3 +4,8 @@
 *.CFG -text
 *.INC -text
 *.BIN binary
+*.COM binary
+*.SYS binary
+*.ACC binary
+*.APP binary
+*.EXE binary

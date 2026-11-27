@@ -1,0 +1,55 @@
+name: Compila
+
+# Assembla tots els programes i desa al repositori, a la carpeta de
+# cadascun, els executables que hi faltin o que no corresponguin al codi
+# font (.COM, .SYS, .ACC, .APP). Es fa a mà: Actions > Compila > Run
+# workflow. Si no hi ha res a compilar, no fa cap commit.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compila:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install NASM
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nasm
+      - name: Assemble
+        run: |
+          # Com el Build: BUILD.SH si la carpeta en té, si no cada .ASM.
+          for dir in */; do
+            dir=${dir%/}
+            ls "$dir"/*.ASM >/dev/null 2>&1 || continue
+            mkdir -p "$RUNNER_TEMP/out/$dir"
+            if [ -f "$dir/BUILD.SH" ]; then
+              (cd "$dir" && sh BUILD.SH "$RUNNER_TEMP/out/$dir")
+            else
+              for asm in "$dir"/*.ASM; do
+                nasm -f bin "$asm" -o "$RUNNER_TEMP/out/$dir/$(basename "$asm" .ASM).COM"
+              done
+            fi
+          done
+      - name: Desa els executables
+        run: |
+          cd "$RUNNER_TEMP/out"
+          for f in */*; do
+            case "$f" in *.COM|*.SYS|*.ACC|*.APP|*.EXE) ;; *) continue ;; esac
+            if ! cmp -s "$f" "$GITHUB_WORKSPACE/$f"; then
+              cp "$f" "$GITHUB_WORKSPACE/$f"
+              echo "compilat: $f"
+            fi
+          done
+          cd "$GITHUB_WORKSPACE"
+          git add -A -- '*.COM' '*.SYS' '*.ACC' '*.APP' '*.EXE'
+          if git diff --cached --quiet; then
+            echo "Res a compilar: tots els executables ja hi són."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Executables compilats pel workflow Compila"
+          git push

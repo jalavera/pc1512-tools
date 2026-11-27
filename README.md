@@ -204,8 +204,9 @@ cada cosa. Qualsevol combinació es desfà amb `HIDOS /U`.
 
 ## Descàrrega
 
-Els executables (`.COM`) són a les
-[Releases](../../releases). També es poden assemblar:
+Els executables (`.COM`, `.SYS`, `.ACC`, `.APP`) són a la carpeta de
+cada programa, al costat del codi font, i a les [Releases](../../releases)
+que s'hagin fet. També es poden assemblar:
 
 ```
 nasm -f bin LOADHI/LOADHI.ASM -o LOADHI.COM
@@ -235,6 +236,10 @@ que és el que fa servir GitHub Actions.
 Cada push assembla tots els programes (GitHub Actions). Per publicar
 una versió: *Actions > Build > Run workflow*, amb el nom
 `programa-versió` (p. ex. `loadhi-0.18`) a *release*.
+
+Per desar al repositori els executables que hi faltin o que no
+corresponguin al codi font: *Actions > Compila > Run workflow* (fa un
+commit amb els que hagin canviat; si no n'hi ha cap, no fa res).
 
 ## Codificació
 
