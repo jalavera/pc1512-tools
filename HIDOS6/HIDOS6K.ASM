@@ -22,12 +22,12 @@ flags   db      0                       ; +8  bit 0: intärpret a baix (/S-)
         db      0                       ; +9
 d_zone  dw      0BE00h                  ; +0Ah on van les dades del DOS (/D:)
         db      0,0,0,0                 ; reservat
-        jmp     near kern               ; +10h des del lloc de "HMA no disponible"
-        jmp     near shell              ; +13h des de l'EXEC del SHELL=
-        jmp     near tabbeg             ; +16h abans de FILES, FCBS, BUFFERS...
-        jmp     near tabend             ; +19h quan el SYSINIT tanca el bloc 'SD'
-        jmp     near bioshk             ; +1Ch (crida far) des del BIOS, abans del SYSINIT
-        jmp     near dosini             ; +1Fh en lloc de "call far [P27B]"
+        jmp     strict near kern               ; +10h des del lloc de "HMA no disponible"
+        jmp     strict near shell              ; +13h des de l'EXEC del SHELL=
+        jmp     strict near tabbeg             ; +16h abans de FILES, FCBS, BUFFERS...
+        jmp     strict near tabend             ; +19h quan el SYSINIT tanca el bloc 'SD'
+        jmp     strict near bioshk             ; +1Ch (crida far) des del BIOS, abans del SYSINIT
+        jmp     strict near dosini             ; +1Fh en lloc de "call far [P27B]"
 
 ; ---- les dades del DOS (DOSDATA) a la memïria superior (/D) -----------------
 ; El MSDOS.SYS, en iniciar-se, copia les seves dades (5 KB) al segment que

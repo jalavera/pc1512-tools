@@ -10,9 +10,9 @@
         cpu     8086
         org     0F80h                   ; offset dins el SYSINIT
 
-        jmp     near uptop
-        jmp     near setfin
-        jmp     near link
+        jmp     strict near uptop
+        jmp     strict near setfin
+        jmp     strict near link
 sig     db      'HIDOS'
 ustart  dw      0BE00h                  ; on comenáa la RAM superior
 uend    dw      0FC00h                  ; primer parÖgraf sense RAM
@@ -21,17 +21,17 @@ lowseg  dw      0                       ; on hauria anat el nucli
 convtop dw      0                       ; final de la memïria convencional
 bion    db      0                       ; +17h  1 = tambÇ el BIOS (/B)
 bmoved  db      0                       ; +18h  1 = el BIOS s'ha copiat
-        jmp     near bioshi             ; +19h  entrada del DOS.SYS (/B)
-        jmp     near dhook              ; +1Ch  ordres del CONFIG.SYS
-        jmp     near nhook              ; +1Fh  segÅent l°nia del CONFIG
+        jmp     strict near bioshi             ; +19h  entrada del DOS.SYS (/B)
+        jmp     strict near dhook              ; +1Ch  ordres del CONFIG.SYS
+        jmp     strict near nhook              ; +1Fh  segÅent l°nia del CONFIG
 lowtab  db      0                       ; +22h  taules a baix: 1 FILES,
                                         ;       2 FCBS, 4 BUFFERS (HIDOS /L:);
                                         ;       8: intärpret a baix (/S-);
                                         ;       10h: /N, sense zona alta
-        jmp     near hkfil              ; +23h  abans dels FILES
-        jmp     near hkfcb              ; +26h  abans dels FCBS
-        jmp     near hkbuf              ; +29h  abans dels BUFFERS
-        jmp     near hkend              ; +2Ch  desprÇs dels BUFFERS
+        jmp     strict near hkfil              ; +23h  abans dels FILES
+        jmp     strict near hkfcb              ; +26h  abans dels FCBS
+        jmp     strict near hkbuf              ; +29h  abans dels BUFFERS
+        jmp     strict near hkend              ; +2Ch  desprÇs dels BUFFERS
 ; +2Fh  paraules del CONFIG.SYS: les noves i les de sempre (les noves,
 ; abans: es compara el principi de la paraula)
 ctab    db      10,'DEVICEHIGH','h'

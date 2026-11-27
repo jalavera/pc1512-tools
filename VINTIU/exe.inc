@@ -5,5 +5,5 @@
 ; l'ha de posar a zero en arrencar.
         cpu 8086
         org 0
-        jmp near inici
+        jmp strict near inici
         dw fi_bss - fi_imatge
