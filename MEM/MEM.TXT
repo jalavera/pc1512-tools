@@ -1,4 +1,4 @@
-MEM per a MS-DOS 3.20                                       versi¢ 0.30
+MEM per a MS-DOS 3.20 i 6.22                                versi¢ 0.31
 =====================                                       15-11-2026
 
 QuŠ ‚s
@@ -9,13 +9,17 @@ castell…. El MEM 6.22 no serveix a DOS 3.20: nom‚s accepta DOS 6.22 i
 llegeix estructures que DOS 3.x no t‚ (noms als blocs de mem•ria,
 subblocs de sistema, enlla‡ de mem•ria superior de DOS 5).
 
+Des de la 0.31 tamb‚ funciona amb MS-DOS 5 i 6 (provat amb el 6.22),
+tamb‚ amb HIDOS6 (vegeu m‚s avall), on el MEM 6.22 dona xifres
+absurdes.
+
 A m‚s, mira quŠ hi ha entre el final de la mem•ria convencional
 (736 KB = B8000h al teu PC1512) i 1 MB: v¡deo, ROM, blocs de mem•ria
 superior, codi resident i controladors carregats a dalt.
 
 Contingut del disquet
 ---------------------
-  MEM.COM      el programa (12.052 bytes)
+  MEM.COM      el programa (15.926 bytes)
   MEM.ASM      el codi font (NASM, CP850)
   MEM.TXT      aquest fitxer
 
@@ -124,6 +128,27 @@ Si no en reconeix cap, MEM /G mostra quŠ busca i on:
     C:\GEMBOOT\CALCLOCK.ACC  firma +0010 -> 1EAB
     C:\GEMBOOT\SNAPSHOT.ACC  firma +0010 -> no encontrado
 
+MS-DOS 6.22 i HIDOS6
+--------------------
+Amb el DOS 5 o 6, MEM segueix la cadena de blocs tamb‚ per la mem•ria
+superior encara que els UMB no estiguin enlla‡ats (DOS=UMB sense LH), i
+mostra:
+- el codi del nucli: a baix, en un bloc "MSDOS Programa de sistema"
+  (sense HMA), o a dalt amb HIDOS6, dins la seva regi¢;
+- els blocs "SD" del CONFIG.SYS amb cada tros (FILES, FCBS, BUFFERS,
+  LASTDRIVE, STACKS, INSTALL) i els DEVICE=/DEVICEHIGH= amb el seu nom;
+- amb HIDOS6 /D, les dades del nucli a dalt ("MSDOS Datos de sistema",
+  6 KB amb la marca) i la part resident d'UMBPC (1.2 o posterior) just
+  darrere; MEM /C els compta a MSDOS i a UMBPC;
+- BUFFERS, FILES i FCBS amb les estructures del DOS 5/6.
+Exemple (HIDOS6 /D, MEM /D):
+   BE000-BF7FF              6,144    (6K)  MSDOS        Datos de sistema
+   BF800-BF90F                272    (0K)  UMBPC        Programa
+   BFDA0-C02CF       1      1,328    (1K)  MSDOS        Datos de sistema
+   BFDB0-BFE7F       1        208    (0K)  FILES        Datos de sistema
+   ...
+   C02D0-C966F       1     37,792   (37K)  MSDOS        Programa de sistema
+
 DiferŠncies amb MEM 6.22
 ------------------------
 - No mostra XMS ni l'…rea de mem•ria alta (el PC1512 ‚s un 8086).
@@ -136,7 +161,8 @@ DiferŠncies amb MEM 6.22
 
 Recomanacions
 -------------
-- Funciona amb MS-DOS 3.1 o posterior. No l'executis amb DOS Plus 1.2:
+- Funciona amb MS-DOS 3.1 a 6.22 (el DOS 4 no s'ha provat). No
+  l'executis amb DOS Plus 1.2:
   les seves estructures internes s¢n diferents. Si detecta la cadena
   de blocs trencada, s'atura amb un missatge.
 - No s'ha provat en un PC1512 real ni a 86Box, nom‚s en un simulador
@@ -145,6 +171,14 @@ Recomanacions
 
 Historial
 ---------
+0.31 27-11-2026  MS-DOS 5 i 6: segueix la cadena cap als UMB encara que
+                 no estiguin enlla‡ats, separa el codi del nucli (bloc
+                 'SC') de les dades, llista els subblocs dels blocs 'SD'
+                 (FILES, FCBS, BUFFERS, LASTDRIVE, STACKS, INSTALL), els
+                 DEVICE= de baix com a m•duls a part (/C), i BUFFERS,
+                 FILES i FCBS del DOS 5/6. HIDOS6 /D: les dades del DOS a
+                 dalt i la part resident d'UMBPC. Amb el DOS 3.20, igual
+                 que la 0.30.
 0.30 26-11-2026  Totes les sortides acaben amb la versi¢ ("MEM 0.30 para
                  MS-DOS 3.x"), per saber sempre quin MEM s'ha executat.
 0.29 26-11-2026  La "Parte transitoria" es decideix pel PSP:2 del COMMAND

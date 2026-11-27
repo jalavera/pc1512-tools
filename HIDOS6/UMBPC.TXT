@@ -1,0 +1,52 @@
+UMBPC per a MS-DOS 5 i 6                                     versi¢ 1.3
+
+QuŠ ‚s
+------
+Controlador de mem•ria superior (UMB) per a 8086/8088 (Amstrad PC1512,
+XT). Busca RAM entre C000 i EFFF (o la zona que es digui) en blocs de
+2 KB, sense esborrar-la i saltant les ROM, i la dona al DOS amb les
+funcions de l'XMS que fa servir DOS=UMB. Aix¡ funcionen DEVICEHIGH i LH.
+Un 8086 no t‚ HMA ni mem•ria estesa: DOS=HIGH no hi fa res (per• vegeu
+HIDOS6).
+
+és
+--
+  DEVICE=C:\DOS\UMBPC.SYS            busca a C000-EFFF
+  DEVICE=C:\DOS\UMBPC.SYS BE00-FBFF  nom‚s a la zona que es digui (hex)
+  DOS=UMB                            (o DOS=HIGH,UMB amb HIDOS6)
+Ha de ser el primer DEVICE= del CONFIG.SYS. En arrencar diu quins blocs
+ha trobat i on ha quedat resident:
+  UMB BE00-FBFF (248 KB)
+  Instalúlat (resident a BE00). Posa DOS=UMB al CONFIG.SYS.
+No s'instalúla si no troba RAM o si ja hi ha un altre XMS (HIMEM).
+No funciona amb l'MS-DOS 3.20 (no t‚ UMB): cal l'MS-DOS 5 o 6.
+
+Mem•ria
+-------
+Des de la 1.2, la part resident (el gestor de l'XMS i la taula de
+blocs, 336 bytes) es copia al principi del primer bloc de mem•ria
+superior, i el DOS en rep la resta. A la mem•ria convencional nom‚s hi
+queda la cap‡alera del controlador (48 bytes m‚s els 16 del bloc). El
+MEM del 6.22 compta aquests 336 bytes com a mem•ria reservada.
+
+HIDOS6 /D
+---------
+Des de la 1.3, si al principi d'un tros de 2 KB de la zona hi ha la
+marca de HIDOS6 /D ('HIDOS6DD' i una mida en par…grafs), UMBPC se'l
+salta: hi ha les dades del DOS. Amb HIDOS6 /D a BE00 i UMBPC BE00-FBFF:
+  UMB BF80-FBFF (242 KB)
+  Instalúlat (resident a BF80). Posa DOS=UMB al CONFIG.SYS.
+
+Compilaci¢
+----------
+  nasm -f bin UMBPC.ASM -o UMBPC.SYS
+
+Historial
+---------
+1.3  27-11-2026  Se salta les dades del DOS de HIDOS6 /D (marca
+                 'HIDOS6DD').
+1.2  27-11-2026  La part resident va a la mem•ria superior: a baix en
+                 queden 64 bytes en lloc de 352.
+1.1              Salta tota la finestra de 16 KB on hi ha una ROM.
+1.0              Primera versi¢ (disquet PC1512_BOOTLOADER_V6.0, amb
+                 IOPATCH6 i l'INFO.TXT).

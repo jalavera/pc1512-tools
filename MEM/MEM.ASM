@@ -1,5 +1,5 @@
 ; =====================================================================
-;  MEM.ASM  -  MEM per a MS-DOS 3.20 (Amstrad PC1512)        versio 0.30
+;  MEM.ASM  -  MEM per a MS-DOS 3.20 i 6.22 (Amstrad PC1512) versio 0.31
 ;
 ;  Substitut de MEM 6.22 que entÇn les estructures de DOS 3.x:
 ;  - noms de programa tret de l'entorn (DOS 3 no els desa al MCB)
@@ -652,6 +652,10 @@ get_country:
 ;  Recollida d'informaci¢
 ; =====================================================================
 gather: mov     [mypsp],cs
+        mov     ah,30h
+        int     21h
+        mov     [dosmaj],al
+        call    find_code
         mov     ah,52h
         int     21h
         mov     [dosseg],es
@@ -686,6 +690,8 @@ gather: mov     [mypsp],cs
         jne     .nsc
         cmp     word [es:8],'SC'
         jne     .nsc
+        call    is_code                 ; (0.31) el codi del DOS 6 (HIDOS6):
+        jnc     .nsc                    ;   un bloc normal, no un forat
         mov     bl,[nreg]
         xor     bh,bh
         shl     bx,1
@@ -738,9 +744,25 @@ gather: mov     [mypsp],cs
         jc      .err
         inc     ax
         cmp     dl,'Z'
-        je      .done
+        je      .zz
         or      ax,ax
         jz      .err
+        jmp     .w
+.zz:    ; (0.31) DOS 5 o mÇs amb els UMB sense enllaáar: la cadena de baix
+        ; acaba en 'Z', perï continua a la memïria superior (el bloc de
+        ; sistema 'SC' just a sota de la memïria de v°deo)
+        cmp     byte [dosmaj],5
+        jb      .done
+        cmp     byte [zcont],0
+        jne     .done
+        cmp     ax,[convtop]
+        jae     .done
+        mov     es,ax
+        cmp     byte [es:0],'M'
+        je      .zc
+        cmp     byte [es:0],'Z'
+        jne     .done
+.zc:    mov     byte [zcont],1
         jmp     .w
 .done:  mov     [dosend],ax
         mov     bl,[nreg]
@@ -761,6 +783,61 @@ gather: mov     [mypsp],cs
         clc
         ret
 .err:   stc
+        ret
+
+; (0.31) DOS 5 o mÇs: segment del codi del nucli. L'INT 20h va a les dades
+; del DOS: "jmp short $+5 / call ... / jmp far cs:[ptr]" i a ptr hi ha
+; l'adreáa del codi (a l'HMA amb DOS=HIGH, o en un bloc 'SC' amb HIDOS6)
+find_code:
+        push    ax
+        push    bx
+        push    cx
+        push    es
+        mov     word [codeseg],0
+        cmp     byte [dosmaj],5
+        jb      .r
+        xor     ax,ax
+        mov     es,ax
+        les     bx,[es:20h*4]
+        cmp     word [es:bx],03EBh
+        jne     .r
+        cmp     byte [es:bx+2],0E8h
+        jne     .r
+        cmp     word [es:bx+5],0FF2Eh
+        jne     .r
+        cmp     byte [es:bx+7],2Eh
+        jne     .r
+        mov     bx,[es:bx+8]
+        mov     ax,[es:bx]              ; el parÖgraf on salta (el segment
+        mov     cl,4                    ;   pot comenáar molt mÇs avall)
+        shr     ax,cl
+        add     ax,[es:bx+2]
+        mov     [codeseg],ax
+.r:     pop     es
+        pop     cx
+        pop     bx
+        pop     ax
+        ret
+
+; ES = MCB: CF=0 si el codi del DOS (codeseg) Çs dins aquest bloc
+is_code:
+        push    ax
+        push    bx
+        mov     ax,[codeseg]
+        or      ax,ax
+        jz      .no
+        mov     bx,es
+        cmp     ax,bx
+        jbe     .no
+        add     bx,[es:3]
+        jc      .no
+        cmp     ax,bx
+        ja      .no
+        clc
+        jmp     short .r
+.no:    stc
+.r:     pop     bx
+        pop     ax
         ret
 
 ; =====================================================================
@@ -1490,11 +1567,34 @@ hidos_k:
         cmp     dx,ax
         jb      .f
         cmp     byte [es:0],'Z'
-        je      .r
-        loop    .l
-        jmp     short .r
+        jne     .lz
+        cmp     byte [dosmaj],5         ; (0.31) DOS 5+: la cadena segueix
+        jb      .r                      ;   a la memïria superior
+        cmp     ax,[convtop]
+        jae     .r
+.lz:    loop    .l
+        jmp     .r
 .f:     mov     [kseg],dx
         mov     [kend],ax
+        mov     [d6mid],ax
+        cmp     byte [dosmaj],5         ; (0.31) HIDOS6 /D: marca 'HIDOS6DD'
+        jb      .f3                     ;   just abans de les dades del DOS
+        push    ax
+        mov     ax,dx
+        dec     ax
+        mov     es,ax
+        cmp     word [es:0],'HI'
+        jne     .f2
+        cmp     word [es:6],'DD'
+        jne     .f2
+        mov     [kseg],ax
+        add     ax,[es:8]
+        cmp     ax,[kend]
+        ja      .f2
+        mov     [d6mid],ax
+.f2:    pop     ax
+        jmp     .r                      ; (el DOS 6 no tÇ DEVICELOW ni /B)
+.f3:
         mov     word [iohi],0           ; i el BIOS (HIDOS /B)? Çs el
         mov     ax,[firstmcb]           ;   segment de l'£ltim controlador
         mov     [lowdrv],ax             ;   de la cadena; i de passada,
@@ -2776,8 +2876,10 @@ drvname:
         je      .s2
         cmp     word [es:8],'SD'
         jne     .h
-.s2:    cmp     byte [es:10],' '
-        jbe     .no
+.s2:    cmp     byte [es:10],'0'        ; (el DOS 6 hi deixa brossa
+        jb      .no                     ;   desprÇs de 'SD')
+        cmp     byte [es:10],'Z'
+        ja      .no
 .h:     cmp     word [es:8],'HI'
         jne     .ok
         cmp     word [es:10],'DO'
@@ -2865,6 +2967,13 @@ blk_type:
         mov     si,s_t_sysdata
         cmp     ax,8
         jne     .t1
+        push    es                      ; (0.31) el codi del DOS (HIDOS6)
+        mov     es,[blk_seg+bx]
+        call    is_code
+        pop     es
+        mov     si,s_t_sysprog
+        jnc     .e
+        mov     si,s_t_sysdata
         shr     bx,1
         push    word [nbuf]             ; (drvname escriu a nbuf)
         call    drvname
@@ -3220,9 +3329,21 @@ build_modules:
         call    find_mod
         mov     ax,[firstmcb]
         mov     [mod_conv],ax
-        mov     ax,[kend]               ; HIDOS: el nucli, a dalt
-        sub     ax,[kseg]
+        mov     ax,[d6mid]              ; HIDOS: el nucli, a dalt (HIDOS6 /D:
+        sub     ax,[kseg]               ;   les dades; darrere, UMBPC)
         mov     [mod_up],ax
+        mov     ax,[kend]
+        sub     ax,[d6mid]
+        jbe     .k6
+        push    ax
+        mov     si,s_umbpc
+        mov     di,nbuf
+        call    strcpy
+        call    find_mod
+        shl     bx,1
+        pop     ax
+        add     [mod_up+bx],ax
+.k6:
         xor     bx,bx
 .l:     cmp     bx,[nblk]
         jae     .e
@@ -3269,8 +3390,6 @@ build_modules:
         pop     di
         or      cx,cx
         jnz     .dn
-        cmp     ax,[convtop]
-        jb      .dn
         call    hdrchk
         jc      .dn
         mov     si,hname
@@ -3280,8 +3399,13 @@ build_modules:
         pop     di
         call    find_mod
         shl     bx,1
+        cmp     ax,[convtop]
+        jb      .dlo
         add     [mod_up+bx],cx
         sub     [mod_up],cx
+        jmp     short .dn
+.dlo:   add     [mod_conv+bx],cx        ; (0.31) a baix (DOS 4 o mÇs)
+        sub     [mod_conv],cx
 .dn:    inc     di
         jmp     .d
 .de:    ret
@@ -3835,7 +3959,10 @@ do_debug:
         sub     cx,ax
         mov     si,s_msdos
         mov     di,s_t_sysprog
-        call    dbg_row
+        cmp     byte [dosmaj],5         ; (0.31) DOS 5+: aqu° nomÇs hi ha
+        jb      .io5                    ;   les dades (el codi, en un bloc
+        mov     di,s_t_sysdata          ;   'SC' o a l'HMA)
+.io5:   call    dbg_row
         mov     bx,[firstmcb]
         mov     di,s_t_sysdrv
         call    dbg_devs
@@ -3874,7 +4001,11 @@ do_debug:
         mov     bx,[dosseg]
         mov     di,s_t_sysdrv
         call    dbg_devs
-.uk1:   mov     ax,[dosseg]
+.uk1:   cmp     byte [dosmaj],5         ; (0.31) DOS 6 amb HIDOS6 /D
+        jb      .uk3
+        call    dbg_d6
+        jmp     .uk
+.uk3:   mov     ax,[dosseg]
         mov     cx,[kend]
         sub     cx,ax
         mov     si,s_msdos
@@ -3902,6 +4033,27 @@ do_debug:
         mov     byte [colB],61
         call    summary_table
         ret
+
+; (0.31) HIDOS6 /D: les dades del DOS a dalt i, darrere, UMBPC
+dbg_d6: mov     ax,[kseg]
+        mov     cx,[d6mid]
+        sub     cx,ax
+        mov     si,s_msdos
+        mov     di,s_t_sysdata
+        xor     dl,dl
+        call    dbg_row
+        mov     ax,[kseg]
+        mov     bx,[d6mid]
+        mov     di,s_t_sysdrv
+        call    dbg_devs
+        mov     ax,[d6mid]
+        mov     cx,[kend]
+        sub     cx,ax
+        jbe     .e
+        mov     si,s_umbpc
+        mov     di,s_t_prog
+        call    dbg_row
+.e:     ret
 
 ; HIDOS: a baix, l'IO (sense /B) i els DEVICELOW
 dbg_low:
@@ -3951,8 +4103,68 @@ dbg_blk:
         add     bx,cx
         mov     di,s_t_device
         call    dbg_devs
+        call    dbg_subs
         pop     dx
         pop     bx
+        ret
+
+; (0.31) AX = MCB d'un bloc 'SD' del DOS 4 o mÇs (CX = parÖgrafs amb el
+; MCB): una fila per a cada subbloc de FILES, FCBS, BUFFERS, LASTDRIVE,
+; STACKS i el tros temporal de l'IO.SYS (els DEVICE= ja hi s¢n)
+dbg_subs:
+        push    ax
+        push    bx
+        push    cx
+        push    si
+        push    di
+        push    es
+        mov     es,ax
+        cmp     word [es:1],8
+        jne     .e
+        cmp     word [es:8],'SD'
+        jne     .e
+        cmp     byte [dosmaj],4
+        jb      .e
+        mov     bx,ax
+        add     bx,cx                   ; final del bloc
+        inc     ax
+.l:     cmp     ax,bx
+        jae     .e
+        mov     es,ax
+        mov     cx,[es:3]
+        inc     cx
+        mov     al,[es:0]
+        mov     si,s_k_fil
+        cmp     al,'F'
+        je      .p
+        mov     si,s_k_fcb
+        cmp     al,'X'
+        je      .p
+        mov     si,s_k_buf
+        cmp     al,'B'
+        je      .p
+        mov     si,s_k_ld
+        cmp     al,'L'
+        je      .p
+        mov     si,s_k_stk
+        cmp     al,'S'
+        je      .p
+        mov     si,s_k_tmp
+        cmp     al,'T'
+        jne     .n
+.p:     mov     ax,es
+        mov     di,s_t_sysdata
+        call    dbg_row
+.n:     mov     ax,es
+        add     ax,cx
+        jc      .e
+        jmp     .l
+.e:     pop     es
+        pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        pop     ax
         ret
 
 ; =====================================================================
@@ -3972,12 +4184,20 @@ SFTSZ   equ     35h
 do_bfx:
         mov     ah,30h
         int     21h
-        cmp     al,3
+        mov     word [sftsz],SFTSZ
+        cmp     al,5                    ; (0.31) DOS 5 i 6
+        jb      .v3
+        cmp     al,6
+        ja      .nov
+        mov     word [sftsz],3Bh
+        jmp     short .vok
+.v3:    cmp     al,3
         jne     .nov
         cmp     ah,10
         jb      .nov
         cmp     ah,30
         ja      .nov
+.vok:
         mov     si,s_bfx_title
         call    pline
         call    blank
@@ -3996,6 +4216,37 @@ do_bfx:
         mov     ax,[es:bx+10h]
         add     ax,16
         mov     [bsize],ax
+        cmp     word [sftsz],SFTSZ
+        je      .b3
+        ; (0.31) DOS 5 i 6: +12h apunta a la informaci¢ dels buffers, que
+        ; comenáa amb l'adreáa del primer; els buffers fan una cadena
+        ; circular (+00h segÅent, +02h anterior, desplaáaments dins el
+        ; mateix segment) amb una capáalera de 14h bytes
+        add     word [bsize],14h-16
+        les     bx,[es:bx+12h]
+        mov     ax,[es:bx]
+        mov     [p_o],ax
+        mov     ax,[es:bx+2]
+        mov     [p_s],ax
+        mov     word [nbufs],0
+        mov     di,bufl
+        mov     cx,[p_o]                ; el primer, per saber quan acaba
+.b5:    cmp     word [nbufs],MAXBUF
+        jae     .bs
+        mov     ax,[p_s]
+        mov     bx,[p_o]
+        call    linear
+        mov     [di],ax
+        mov     [di+2],dx
+        add     di,4
+        inc     word [nbufs]
+        les     bx,[p_o]
+        mov     ax,[es:bx]
+        mov     [p_o],ax
+        cmp     ax,cx
+        jne     .b5
+        jmp     .bs
+.b3:
         ; --- BUFFERS. DOS els tÇ encadenats per ordre d'£s (el darrer
         ;     que fa servir passa al davant), no per adreáa: primer es
         ;     recullen les adreces, s'ordenen i desprÇs s'agrupen els
@@ -4147,7 +4398,7 @@ bfx_sft:
         mov     cx,[es:bx+4]
         mov     [r_n],cx
         add     [di],cx
-        mov     ax,SFTSZ
+        mov     ax,[sftsz]
         mul     cx
         add     ax,6
         mov     [r_sz],ax
@@ -4253,7 +4504,15 @@ bfx_row:
         mov     si,s_o_dos
         cmp     ax,[firstmcb]
         jb      .o
-        mov     si,s_o_up
+        cmp     byte [dosmaj],5         ; (0.31) dins les dades del DOS 6
+        jb      .o2                     ;   de dalt (HIDOS6 /D)
+        cmp     word [kseg],0
+        je      .o2
+        cmp     ax,[kseg]
+        jb      .o2
+        cmp     ax,[kend]
+        jb      .o
+.o2:    mov     si,s_o_up
         cmp     ax,[convtop]
         jae     .o
         mov     si,s_o_conv
@@ -4780,6 +5039,10 @@ cls_txt dw      s_c_video, s_c_rom, s_c_chain, s_c_resid, s_c_sysrom
 
 s_emm   db      'EMMXXXX0'
 s_msdos db      'MSDOS',0
+s_k_ld  db      'LASTDRIVE',0
+s_umbpc db      'UMBPC',0
+s_k_stk db      'STACKS',0
+s_k_tmp db      'INSTALL',0
 s_mem   db      'MEM',0
 s_command db    'COMMAND',0
 s_io    db      'IO',0
@@ -4942,7 +5205,7 @@ help_txt:
         db      '  /G              Dentro del GEM: muestra quÇ archivos del GEM busca',0
         db      '                  en la memoria y d¢nde los encuentra.',0
         db      0
-s_ver   db      'MEM 0.30 para MS-DOS 3.x (PC1512).',0
+s_ver   db      'MEM 0.31 para MS-DOS 3.x a 6.x (PC1512).',0
         db      0FFh
 s_buit  db      0
 
@@ -5076,4 +5339,9 @@ graw    equ     gimg+2
 gfh     equ     graw+2
 gtries  equ     gfh+2
 ghit    equ     gtries+2
-bss_end equ     ghit+2
+dosmaj  equ     ghit+2                ; (0.31) versi¢ del DOS
+zcont   equ     dosmaj+1              ; ja ha seguit cap als UMB (DOS 5+)
+codeseg equ     zcont+1               ; segment del codi del nucli (DOS 5+)
+sftsz   equ     codeseg+2             ; mida d'una entrada de FILES/FCBS
+d6mid   equ     sftsz+2               ; HIDOS6 /D: final de les dades
+bss_end equ     d6mid+2

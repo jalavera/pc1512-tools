@@ -1,0 +1,212 @@
+HIDOS6 per a MS-DOS 6.22                                     versi¢ 0.3
+
+QuŠ ‚s
+------
+HIDOS6 fa que l'MS-DOS 6.22 posi a la mem•ria superior el codi del
+nucli i del BIOS de l'IO.SYS (uns 37 KB), el COMMAND.COM, les taules
+del CONFIG.SYS (FILES, FCBS, BUFFERS, LASTDRIVE, STACKS) i, amb /D, les
+dades del nucli (5 KB), en un 8086 com el PC1512, que no t‚ HMA.
+
+Amb DOS=HIGH, l'MS-DOS 6.22 copia aquest codi a l'HMA, la mem•ria just
+per sobre d'1 MB. Un 8086 no en t‚, i per aix• surt "HMA no disponible:
+Cargando DOS en baja". Amb HIDOS6, en lloc de l'HMA el copia a un bloc
+de mem•ria superior (UMB), la que dona UMBPC.SYS.
+
+Resultat a l'emulador de proves (736 KB, UMBPC a BE00-FBFF, el teu
+CONFIG.SYS amb BUFFERS=1, FILES=8), programa executable m‚s extens:
+  abans (DOS=UMB, UMBPC 1.1):                  683 KB (699.072 bytes)
+  HIDOS6 0.1:                                  725 KB (742.576 bytes)
+  HIDOS6 0.2 + UMBPC 1.2:                      727 KB (744.000 bytes)
+  HIDOS6 0.3 /D + UMBPC 1.3:                   732 KB (749.088 bytes)
+    amb /D /L (taules a baix):                 725 KB
+    sense /D (dades del DOS a baix):           727 KB
+    sense /D, amb /S- (COMMAND.COM a baix):    721 KB
+    nom‚s DOS=UMB (sense HIGH), sense /D:      690 KB
+Amb FILES=30, BUFFERS=15, LASTDRIVE=E i STACKS=9,256 tamb‚ surten
+732 KB: les taules (13 KB) van totes a dalt.
+Amb /D, a la mem•ria convencional nom‚s hi queden 4,5 KB: la taula de
+vectors i les …rees de la BIOS i del DOS (fins a 006FF, 1,75 KB), les
+dades de l'IO.SYS (2,6 KB: CON, AUX, PRN, discs...), la cap‡alera
+d'UMBPC (64 bytes) i els DEVICE= que hi posis.
+
+Com ho mostra el MEM del 6.22
+-----------------------------
+El codi del nucli va a un bloc del sistema ("SC") que el MEM del 6.22
+compta com a "Reservada", no com a "Superior": per aix• MSDOS surt amb
+0 a la columna de mem•ria superior i la mem•ria reservada creix uns
+37 KB. Els que compten s¢n "Convencional ... Libre" i "Programa
+ejecutable m s extenso". Les taules surten a dalt com a "SD" (MEM /D).
+Les dades
+del nucli (/D) no s¢n en cap bloc: tamb‚ compten com a "Reservada".
+
+Requisits
+---------
+- MS-DOS 6.22 en castell… (IO.SYS de 40963 bytes, CRC32 A92837B5) o en
+  anglŠs (40774 bytes, A7EA3BE4). Amb IOPATCH6 (736 KB) o sense.
+- UMBPC.SYS (al disquet la 1.3) com a primer DEVICE= del CONFIG.SYS.
+  Amb /D cal la 1.3 (vegeu "Compte"). Sense /D, la 1.1 i la 1.2 tamb‚
+  funcionen (amb la 1.1 en queden 336 bytes m‚s a baix).
+- Al CONFIG.SYS: DOS=HIGH,UMB.
+
+Contingut del disquet
+---------------------
+HIDOS6.COM   el programa
+HIDOS6.TXT   aquest fitxer
+HIDOS6.ASM   el codi font del programa
+HIDOS6K.ASM  el codi font del que s'afegeix a l'IO.SYS (1.120 bytes)
+BUILD.SH     com s'assemblen (sh BUILD.SH): HIDOS6K.ASM, un cop per a
+             cada IO.SYS (castell… i anglŠs), i despr‚s HIDOS6.ASM
+UMBPC.SYS    el controlador de mem•ria superior (1.3)
+UMBPC.TXT    el seu manual
+UMBPC.ASM    el seu codi font
+
+Instalúlaci¢
+------------
+1. Fes una c•pia del disc dur (de la imatge, a 86Box).
+2. Si vols IOPATCH6, posa'l abans (vegeu "Compte").
+3. Copia UMBPC.SYS sobre el d'abans (C:\DOS\UMBPC.SYS).
+4. Copia HIDOS6.COM al disc dur (p. ex. C:\UTILS) i executa:
+     HIDOS6 /D
+   (o HIDOS6 sense /D, per deixar les dades del DOS a baix). Diu quin
+   IO.SYS ha trobat i on aniran l'intŠrpret, les taules i les dades. Si
+   hi havia la 0.1 o la 0.2, l'actualitza i en conserva les opcions.
+   La zona de /D (BE00) ha de ser el principi de la zona d'UMBPC
+   (DEVICE=C:\DOS\UMBPC.SYS BE00-FBFF): UMBPC 1.3 se'n salta 6 KB.
+5. Al CONFIG.SYS, canvia DOS=UMB per DOS=HIGH,UMB:
+     DEVICE=C:\DOS\UMBPC.SYS BE00-FBFF
+     DOS=HIGH,UMB
+     BUFFERS=1
+     FILES=8
+     FCBS=1,0
+     LASTDRIVE=C
+     STACKS=0,0
+     COUNTRY=034,850,C:\DOS\COUNTRY.SYS
+     DRIVPARM=/D:1 /T:2
+     SHELL=C:\COMMAND.COM C:\ /E:512 /P
+   L'AUTOEXEC.BAT pot quedar igual (LH KEYBX..., LH MOUSE...).
+6. Reinicia. Surt:
+     UMBPC 1.3 - mem•ria superior (UMB) per a 8086/8088
+       UMB BF80-FBFF (242 KB)
+       Instalúlat (resident a BF80). Posa DOS=UMB al CONFIG.SYS.
+     HIDOS6: MS-DOS (tamb‚ les dades) a la mem•ria superior.
+   (sense /D: "UMB BE00-FBFF" i "HIDOS6: MS-DOS a la mem•ria superior.")
+   o, si no hi ha UMB (sense UMBPC, o sense el ",UMB" de DOS=):
+     HIDOS6: sense mem•ria superior (cal UMBPC i DOS=UMB); MS-DOS a baix.
+   i el DOS arrenca com sempre, a baix.
+7. Mira-ho amb MEM /C /P (vegeu "Com ho mostra el MEM del 6.22").
+
+és
+--
+  HIDOS6            aplica el peda‡ a C:\IO.SYS; si ja hi ‚s, diu l'estat
+  HIDOS6 A:         a A:\IO.SYS
+  HIDOS6 /S-        l'intŠrpret (SHELL=, el COMMAND.COM) a la mem•ria
+                    convencional; la resta, a dalt
+  HIDOS6 /S         l'intŠrpret a la mem•ria superior (per defecte)
+  HIDOS6 /L         FILES, FCBS, BUFFERS, LASTDRIVE i STACKS a la
+                    mem•ria convencional (com sense HIDOS6)
+  HIDOS6 /L-        ... a la mem•ria superior (per defecte)
+  HIDOS6 /D         les dades del nucli (5 KB) a la mem•ria superior, al
+                    principi de la zona: BE00 (cal UMBPC 1.3)
+  HIDOS6 /D:C000    ... a C000 (segment m£ltiple de 80h, de A000 amunt)
+  HIDOS6 /D-        les dades del nucli a la convencional (per defecte)
+  HIDOS6 /U         el desf…: l'IO.SYS torna a ser l'original (si hi
+                    havia l'IOPATCH6, el conserva)
+Si el peda‡ ja hi ‚s, /S, /S-, /L, /L-, /D i /D- nom‚s canvien
+l'opci¢. Cal reiniciar. Es poden combinar: HIDOS6 /D /S- /L.
+ERRORLEVEL: 0 correcte (o no calia fer res), 1 no troba l'IO.SYS o
+sintaxi incorrecta, 2 no el reconeix (no ha tocat res), 3 error en
+escriure.
+
+Sense tocar l'IO.SYS tamb‚ pots triar al CONFIG.SYS:
+  DOS=HIGH,UMB      nucli, taules i COMMAND.COM a dalt (segons /S i /L)
+  DOS=UMB           taules i COMMAND.COM a dalt (690 KB), el nucli a baix
+  sense DOS=        tot com sempre (sense UMB)
+
+Com funciona
+------------
+- HIDOS6 afegeix 752 bytes al final de l'IO.SYS, dins el SYSINIT (la
+  part que llegeix el CONFIG.SYS), i canvia 37 bytes en 8 llocs: les 3
+  mides del SYSINIT i el segment on es carrega el MSDOS.SYS (perquŠ el
+  tros nou s'hi copi‹), el lloc del missatge "HMA no disponible",
+  l'EXEC del SHELL= i el principi i el final de les taules. L'IO.SYS
+  passa de 40963 a 41715 bytes (en anglŠs, de 40774 a 41526); el
+  primer tros del fitxer no es mou, i l'MSLOAD segueix la cadena de la
+  FAT, aix¡ que no cal que sigui seguit.
+- Nucli: amb DOS=HIGH i sense HMA, l'MS-DOS 6.22 ja sap posar el codi
+  en un bloc nou ("SC", del sistema) amb la funci¢ 48h. HIDOS6, just
+  abans, enlla‡a els UMB i diu al DOS que busqui primer a dalt; despr‚s
+  ho torna a deixar com estava. Hi va el codi del BIOS i del nucli
+  (36,9 KB); les dades del nucli i de l'IO.SYS no es poden moure.
+- Taules: el SYSINIT posa FILES, FCBS, BUFFERS, LASTDRIVE i STACKS un
+  darrere l'altre just despr‚s dels DEVICE=, i en fa el bloc "SD".
+  HIDOS6 li dona, en lloc d'aix•, un bloc de mem•ria superior; quan el
+  SYSINIT acaba, l'ajusta a la mida feta i el bloc de baix nom‚s t‚ els
+  DEVICE=. Al final del bloc de dalt hi queda un tros de 136 bytes que
+  el SYSINIT fa servir per executar el SHELL= (a baix l'esborrava).
+- IntŠrpret: abans d'executar el SHELL=, enlla‡a els UMB i diu al DOS
+  que nom‚s faci servir la mem•ria superior, i deixa un ganxo de 131
+  bytes a l'INT 21h (a dalt). Al primer programa que executa el
+  COMMAND.COM, o quan alg£ (LH) demana l'estratŠgia de mem•ria, el
+  ganxo torna a posar l'estratŠgia i l'enlla‡ com sempre, es treu de la
+  cadena i allibera el seu bloc. Aix¡ el COMMAND.COM, el seu entorn i
+  les dades van a dalt, i els programes, a baix com sempre (LH continua
+  funcionant, tamb‚ com a primera l¡nia de l'AUTOEXEC.BAT).
+- UMBPC 1.2 es copia ell mateix (el gestor de l'XMS, 336 bytes) al
+  principi de la mem•ria superior; a baix nom‚s hi deixa la cap‡alera.
+- Dades del nucli (/D): en arrencar, el BIOS de l'IO.SYS deixa a
+  0070:0003 el primer par…graf lliure, i el MSDOS.SYS hi copia les seves
+  dades (5 KB, amb les dels discs) i fa comen‡ar la mem•ria just
+  despr‚s. Amb /D, abans que hi hagi UMBPC, HIDOS6 comprova que la zona
+  sigui RAM, hi escriu una marca ('HIDOS6DD' i la mida, 6 KB) i hi posa
+  les dades; i al MSDOS.SYS, ja carregat a la mem•ria (el fitxer no es
+  toca), li canvia 4 bytes perquŠ la mem•ria comenci on hauria
+  comen‡at, a baix. UMBPC 1.3 veu la marca i se salta aquests 6 KB. Si
+  la zona no ‚s RAM, tot queda com sense /D.
+
+Compte
+------
+- /D necessita UMBPC 1.3: la 1.1 i la 1.2 no saben que les dades del
+  DOS s¢n al principi de la zona i les donarien com a mem•ria superior
+  (l'MS-DOS es penjaria en arrencar). Si passa, prem F5: sense CONFIG.SYS
+  no es carrega UMBPC i arrenca; copia UMBPC 1.3, o fes HIDOS6 /D-.
+  Si la zona d'UMBPC no comen‡a on diu /D, cal que no la inclogui
+  (p. ex. /D:BE00 i UMBPC C000-FBFF tamb‚ va b‚).
+- La part transit•ria del COMMAND.COM (la que fa DIR, COPY, els .BAT...)
+  queda al capdamunt de la mem•ria superior, sense reservar, com quan el
+  COMMAND.COM ‚s a baix (all… ‚s al capdamunt de la convencional). Si la
+  mem•ria superior s'ompl¡s fins a dalt amb LH o DEVICEHIGH, el
+  COMMAND.COM la trepitjaria en tornar-la a llegir. Amb 248 KB de zona i
+  uns 45 KB ocupats no hauria de passar; si fas servir molta mem•ria
+  superior, HIDOS6 /S-.
+- IOPATCH6 i HIDOS6 toquen tots dos l'IO.SYS, per• llocs diferents:
+  ú Posa IOPATCH6 primer i despr‚s HIDOS6. HIDOS6 /U conserva l'IOPATCH6.
+  ú IOPATCH6 /U funciona amb HIDOS6 posat.
+  ú IOPATCH6 (aplicar) amb HIDOS6 ja posat diu que l'IO.SYS no ‚s cap dels
+    coneguts: fes HIDOS6 /U, IOPATCH6 i HIDOS6 (o IOPATCH6 /F).
+- Un SYS C: torna a posar l'IO.SYS original: torna a executar HIDOS6.
+- F5 (sense CONFIG.SYS) arrenca com sempre: el peda‡ no fa res sense
+  DOS=HIGH ni UMB (amb /D, les dades del DOS van a dalt igualment).
+- Nom‚s s'ha provat a l'emulador de proves (arrencada, DIR, COPY, TYPE,
+  MEM, LH KEYBX, DEVICEHIGH, FILES=30, BUFFERS=15, STACKS=9,256; la
+  0.2, tamb‚ a 86Box: 743.856 bytes lliures), /D no a 86Box: prova-ho
+  amb una c•pia del disc. Si l'MS-DOS no arrenca,
+  prem F5 en "Iniciando MS-DOS..." (o arrenca des d'un disquet) i fes
+  HIDOS6 /U, o treu el HIGH de DOS=.
+
+Historial
+---------
+0.3  27-11-2026  /D: les dades del nucli (5 KB) tamb‚ a la mem•ria
+                 superior, al principi de la zona (cal UMBPC 1.3, que se
+                 les salta); /D-: a baix (per defecte). A baix en queden
+                 4,5 KB: 749.088 bytes lliures. Actualitza un IO.SYS de
+                 la 0.1 o la 0.2.
+0.2  27-11-2026  FILES, FCBS, BUFFERS, LASTDRIVE i STACKS tamb‚ a la
+                 mem•ria superior (/L: a baix). El ganxo de l'intŠrpret
+                 tamb‚ salta amb LH (abans, un LH a la primera l¡nia de
+                 l'AUTOEXEC.BAT carregava el programa a baix). Desa i
+                 torna a posar l'estratŠgia i l'enlla‡ dels UMB del
+                 SYSINIT. Actualitza un IO.SYS de la 0.1. Amb UMBPC 1.2.
+0.1  27-11-2026  Primera versi¢: amb DOS=HIGH, el codi del nucli i del
+                 BIOS a la mem•ria superior en lloc de l'HMA, i el
+                 COMMAND.COM tamb‚ a dalt (/S-: a baix). IO.SYS 6.22
+                 castell… i anglŠs, amb IOPATCH6 o sense; /U el desf….

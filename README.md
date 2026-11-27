@@ -7,7 +7,7 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | Programa | Versió | Què fa |
 |---|---|---|
 | [LOADHI](LOADHI/) | 0.28 | Crea memòria superior (UMB) enllaçada a la cadena del DOS 3.x i hi carrega residents, BUFFERS, FILES i COMMAND.COM; mentre corre un programa carregat a dalt, a la convencional només hi queden el seu PSP i l'entorn (uns 400 bytes); els residents que es treuen ells mateixos (p. ex. PC Tools /R) tornen bé al COMMAND.COM |
-| [MEM](MEM/) | 0.30 | El MEM del MS-DOS 6.22 refet per a DOS 3.x: memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos; la part transitòria del COMMAND.COM, només on és de debò; cada sortida acaba amb la versió |
+| [MEM](MEM/) | 0.31 | El MEM del MS-DOS 6.22 refet per a DOS 3.x i 6.x (també amb HIDOS6): memòria convencional i superior, blocs, mapa de B8000 a FFFFF, BUFFERS/FILES/FCBS; dins del GEM, separa accessoris, controladors i recursos; la part transitòria del COMMAND.COM, només on és de debò; cada sortida acaba amb la versió |
 | [GEMHI](GEMHI/) | 0.24 | Engega el GEM 2.0 triant amb /A: i /B: on va cada peça (GEMHI, GEMVDI, GEM.EXE, recursos, controladors i lletres, i el COMMAND.COM de la Shell de DOS), amb els accessoris a la memòria superior; dades de les aplicacions a dalt segons la marca, mesures a GEMHI.LOG i alertes de depuració (/D) |
 | [GEMGO](GEMGO/) | 0.19 | Llista les aplicacions i accessoris del GEM d'una unitat, amb les mesures de GEMHI, i hi posa o treu (reversiblement) la marca que diu a GEMHI on va el programa i on van les dades; activa o desactiva accessoris; Intro les obre amb el GEM, i mentre el GEM corre només en queda un tros de 0,8 KB; F1, ajuda (abans APPHI) |
 | [CHARMAP](CHARMAP/) | 0.8 | Accessori del GEM 2.0: mapa de caràcters que escriu una cadena a l'aplicació del davant |
@@ -16,6 +16,8 @@ seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 | [CMDTR](CMDTR/) | 0.1 | Diagnòstic: diu on té la part transitòria el COMMAND.COM del MS-DOS 3.20 que l'ha engegat |
 | [IOPATCH](IOPATCH/) | 5.0 | Pedaç de l'IO.SYS del MS-DOS 3.20: menú d'arrencada (MS-DOS / DOS Plus...) amb ratolí i compte enrere, i memòria convencional fins a 736 KB, sense FIXLDR; es desfà amb /U. Amb IOCONFIG per configurar el menú |
 | [IOPATCH6](IOPATCH6/) | 1.0 | Pedaç de l'IO.SYS del MS-DOS 6.22: memòria convencional fins a 736 KB; es desfà amb /U |
+| [HIDOS6](HIDOS6/) | 0.3 | Per al MS-DOS 6.22 en un 8086 (sense HMA): amb DOS=HIGH,UMB, el codi del nucli i del BIOS, el COMMAND.COM, FILES/FCBS/BUFFERS/LASTDRIVE/STACKS i (/D) les dades del nucli a la memòria superior; a baix en queden 4,5 KB. Es desfà amb /U |
+| [UMBPC](HIDOS6/) | 1.3 | Controlador de memòria superior (UMB, XMS) per a 8086 amb MS-DOS 5/6: DEVICEHIGH i LH; la seva part resident també va a dalt (a la carpeta de HIDOS6) |
 | [HIDOS](HIDOS/) | 0.13 | Posa el nucli del MS-DOS 3.20 i les seves taules (FILES, BUFFERS, FCBS, unitats, DEVICEHIGH=) a la memòria superior; BUFFERSLOW=/FILESLOW=/FCBSLOW= i REM al CONFIG.SYS, intèrpret a baix amb /S-, només les ordres noves amb /N; es desfà amb /U |
 | [XPATH](XPATH/) | 0.7 | PATH (i altres variables) a l'entorn del COMMAND.COM principal, amb %VAR%, comprovació dels camins i llistes desades |
 | [KEYBX](KEYBX/) | 2.4 | Remapejador de teclat resident (MS-DOS 2.x a 6.xx): aprèn quina tecla fa cada símbol quan l'emulador envia codis que no quadren amb el teclat; amb driver de ratolí del PC1512 (/M). Porta el KEYBX.CFG configurat |
@@ -216,6 +218,7 @@ nasm -f bin DOSSHELL/DOSSHELL.ASM -o DOSSHELL.ACC (accessori del GEM)
 nasm -f bin EINES/EINES.ASM -o EINES.ACC         (accessori del GEM)
 nasm -f bin CMDTR/CMDTR.ASM -o CMDTR.COM
 nasm -f bin IOPATCH6/IOPATCH6.ASM -o IOPATCH6.COM
+cd HIDOS6 && sh BUILD.SH                 (HIDOS6.COM i UMBPC.SYS)
 cd IOPATCH && sh BUILD.SH                (IOPATCH.COM i IOCONFIG.COM)
 cd HIDOS && sh BUILD.SH                  (HIDOS.COM)
 cd NOTE && sh BUILD.SH                   (NOTE.COM i FREENOTE.COM)
@@ -247,8 +250,9 @@ català.
 ## Requisits
 
 - MS-DOS 3.1 a 3.3 (provat amb el 3.20 de l'Amstrad PC1512).
-  IOPATCH6 és per al MS-DOS 6.22. XPATH, SEARCH, DIRCLEAN, DELTREE i
-  NOTE/FREENOTE funcionen del 3.x al 6.x; WAIT, AMSMOUSE i GEMPATCH, des del 2.0. HIDOS és per
+  IOPATCH6, HIDOS6 i UMBPC són per al MS-DOS 6.22 (HIDOS6 /D, amb UMBPC
+  1.3). XPATH, SEARCH, DIRCLEAN, DELTREE, NOTE/FREENOTE i MEM funcionen
+  del 3.x al 6.x; WAIT, AMSMOUSE i GEMPATCH, des del 2.0. HIDOS és per
   al MS-DOS 3.20 de l'Amstrad.
 - Per a la memòria superior: RAM entre 640 KB i 1 MB (per exemple les
   targetes de memòria *Generic PC/XT* de 86Box).
