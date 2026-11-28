@@ -1,6 +1,6 @@
 # Eines per a l'Amstrad PC1512 i MS-DOS 3.20
 
-Programes per a MS-DOS 3.x escrits des de zero per a l'Amstrad PC1512
+Programes per a MS-DOS i GEM escrits des de zero per a l'Amstrad PC1512
 (provats a l'emulador [86Box](https://86box.net)). Cada programa té la
 seva carpeta amb el codi font (`.ASM`, NASM) i el seu manual (`.TXT`).
 
